@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -Wall -Werror -std=c++11 -g
-INCLUDES = -Icommon
+INCLUDES = -Icommon -Ilib/include
 LDFLAGS = -pthread
 
 COMMON_SRC := $(wildcard common/*.cpp)
@@ -13,16 +13,18 @@ SERVER_SRC = $(wildcard server/*.cpp) $(COMMON_SRC)
 SERVER_OBJ = $(patsubst %.cpp, bin/o/%.o, $(SERVER_SRC))
 
 BIN_DIR = bin
+LIB_DIR = lib
+LIBS = -ljuice
 
 .PHONY: all client server clean
 
 all: client server
 
 client: $(CLIENT_OBJ) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $(BIN_DIR)/$@ $(CLIENT_OBJ)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(CLIENT_OBJ) $(LIBS)
 
 server: $(SERVER_OBJ) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ) $(LIBS)
 
 bin/o/%.o: %.cpp | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@

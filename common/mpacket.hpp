@@ -5,7 +5,7 @@
 #include "connection.hpp"
 
 #define MPACKET_PROTOCOL_VERSION 1
-#define MPACKET_MAX_SIZE ((size_t)1024)
+#define MPACKET_MAX_SIZE ((size_t)5100)
 
 enum MPacketType {
     MPACKET_NONE,
@@ -18,7 +18,15 @@ enum MPacketType {
     MPACKET_LOBBY_LEFT,
     MPACKET_LOBBY_LIST_GET,
     MPACKET_LOBBY_LIST_GOT,
+    MPACKET_PEER_SDP,
+    MPACKET_PEER_CANDIDATE,
     MPACKET_MAX,
+};
+
+enum MPacketSendType {
+    MSEND_TYPE_CLIENT,
+    MSEND_TYPE_SERVER,
+    MSEND_TYPE_BOTH,
 };
 
 #pragma pack(1)
@@ -70,12 +78,22 @@ typedef struct {
     uint16_t maxConnections;
 } MPacketLobbyListGotData;
 
+typedef struct {
+    uint64_t lobbyId;
+    uint64_t userId;
+} MPacketPeerSdpData;
+
+typedef struct {
+    uint64_t lobbyId;
+    uint64_t userId;
+} MPacketPeerCandidateData;
+
 #pragma pack()
 
 typedef struct {
     enum MPacketType packetType;
     uint16_t stringCount;
-    bool serverPacket;
+    enum MPacketSendType sendType;
 } MPacketImplSettings;
 
 class MPacket {
@@ -94,7 +112,7 @@ class MPacket {
         virtual MPacketImplSettings GetImplSettings() { return {
             .packetType = MPACKET_NONE,
             .stringCount = 0,
-            .serverPacket = false
+            .sendType = MSEND_TYPE_CLIENT
         };}
 
 };
@@ -130,7 +148,7 @@ class MPacketJoined : public MPacketImpl<MPacketJoinedData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_JOINED,
             .stringCount = 0,
-            .serverPacket = true
+            .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
 };
@@ -141,7 +159,7 @@ class MPacketLobbyCreate : public MPacketImpl<MPacketLobbyCreateData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_CREATE,
             .stringCount = 3,
-            .serverPacket = false
+            .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
 };
@@ -152,7 +170,7 @@ class MPacketLobbyCreated : public MPacketImpl<MPacketLobbyCreatedData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_CREATED,
             .stringCount = 3,
-            .serverPacket = true
+            .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
 };
@@ -163,7 +181,7 @@ class MPacketLobbyJoin : public MPacketImpl<MPacketLobbyJoinData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_JOIN,
             .stringCount = 0,
-            .serverPacket = false
+            .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
 };
@@ -174,7 +192,7 @@ class MPacketLobbyJoined : public MPacketImpl<MPacketLobbyJoinedData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_JOINED,
             .stringCount = 0,
-            .serverPacket = true
+            .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
 };
@@ -185,7 +203,7 @@ class MPacketLobbyLeave : public MPacketImpl<MPacketLobbyLeaveData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LEAVE,
             .stringCount = 0,
-            .serverPacket = false
+            .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
 };
@@ -196,7 +214,7 @@ class MPacketLobbyLeft : public MPacketImpl<MPacketLobbyLeftData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LEFT,
             .stringCount = 0,
-            .serverPacket = true
+            .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
 };
@@ -207,7 +225,7 @@ class MPacketLobbyListGet : public MPacketImpl<MPacketLobbyListGetData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LIST_GET,
             .stringCount = 1,
-            .serverPacket = false
+            .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
 };
@@ -218,7 +236,30 @@ class MPacketLobbyListGot : public MPacketImpl<MPacketLobbyListGotData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LIST_GOT,
             .stringCount = 3,
-            .serverPacket = true
+            .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
 };
+
+class MPacketPeerSdp : public MPacketImpl<MPacketPeerSdpData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_PEER_SDP,
+            .stringCount = 1,
+            .sendType = MSEND_TYPE_BOTH
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketPeerCandidate : public MPacketImpl<MPacketPeerCandidateData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_PEER_CANDIDATE,
+            .stringCount = 1,
+            .sendType = MSEND_TYPE_BOTH
+        };}
+        bool Receive(Connection* connection) override;
+};
+

@@ -14,10 +14,10 @@ class Server {
         std::thread mThreadRecv;
         std::thread mThreadUpdate;
         int mSocket;
-        std::map<uint64_t, Connection*> mClients;
-        std::mutex mClientsMutex;
+        std::map<uint64_t, Connection*> mConnections;
+        std::mutex mConnectionsMutex;
         std::map<uint64_t, Lobby*> mLobbies;
-        uint64_t mNextClientId = 1;
+        uint64_t mNextConnectionId = 1;
         uint64_t mNextLobbyId = 1;
 
     public:
@@ -25,10 +25,12 @@ class Server {
         void Receive();
         void Update();
 
+        Connection* ConnectionGet(uint64_t aUserId);
+
         Lobby* LobbyGet(uint64_t aLobbyId);
         void LobbyListGet(Connection& aConnection, std::string aGame);
 
-        void OnClientDisconnect(Connection* aConnection);
+        void OnConnectionDisconnect(Connection* aConnection);
         void OnLobbyJoin(Lobby* aLobby, Connection* aConnection);
         void OnLobbyLeave(Lobby* aLobby, Connection* aConnection);
         void OnLobbyDestroy(Lobby* aLobby);

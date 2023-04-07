@@ -11,9 +11,9 @@
 
 Server* gServer = NULL;
 
-static void sOnConnectionDisconnected(Connection* client) { gServer->OnClientDisconnect(client); }
-static void sOnLobbyJoin(Lobby* lobby, Connection* client) { gServer->OnLobbyJoin(lobby, client); }
-static void sOnLobbyLeave(Lobby* lobby, Connection* client) { gServer->OnLobbyLeave(lobby, client); }
+static void sOnConnectionDisconnected(Connection* connection) { gServer->OnConnectionDisconnect(connection); }
+static void sOnLobbyJoin(Lobby* lobby, Connection* connection) { gServer->OnLobbyJoin(lobby, connection); }
+static void sOnLobbyLeave(Lobby* lobby, Connection* connection) { gServer->OnLobbyLeave(lobby, connection); }
 static void sOnLobbyDestroy(Lobby* lobby) { gServer->OnLobbyDestroy(lobby); }
 
 static void sReceiveStart(Server* server) { server->Receive(); }
@@ -75,30 +75,30 @@ void Server::Receive() {
 
     while (true) {
         // accept the incoming connection
-        Connection* client = new Connection(mNextClientId++);
+        Connection* connection = new Connection(mNextConnectionId++);
         socklen_t len = sizeof(struct sockaddr_in);
-        client->mSocket = accept(mSocket, (struct sockaddr *) &client->mAddress, &len);
+        connection->mSocket = accept(mSocket, (struct sockaddr *) &connection->mAddress, &len);
 
         // make sure the connection worked
-        if (client->mSocket < 0) {
-            LOG_ERROR("Failed to accept socket (%d)!", client->mSocket);
-            delete client;
+        if (connection->mSocket < 0) {
+            LOG_ERROR("Failed to accept socket (%d)!", connection->mSocket);
+            delete connection;
             continue;
         }
 
-        // start client
-        client->Begin();
+        // start connection
+        connection->Begin();
 
         // send join packet
         MPacketJoined({
-            .userId = client->mId,
+            .userId = connection->mId,
             .version = MPACKET_PROTOCOL_VERSION
-        }).Send(*client);
+        }).Send(*connection);
 
-        // remember client
-        std::lock_guard<std::mutex> guard(mClientsMutex);
-        mClients[client->mId] = client;
-        LOG_INFO("[%lu] Client added, count: %lu", client->mId, mClients.size());
+        // remember connection
+        std::lock_guard<std::mutex> guard(mConnectionsMutex);
+        mConnections[connection->mId] = connection;
+        LOG_INFO("[%lu] Connection added, count: %lu", connection->mId, mConnections.size());
     }
 }
 
@@ -109,11 +109,16 @@ void Server::Update() {
     }
 }
 
+Connection *Server::ConnectionGet(uint64_t aUserId) {
+    std::lock_guard<std::mutex> guard(mConnectionsMutex);
+    return mConnections[aUserId];
+}
+
 Lobby* Server::LobbyGet(uint64_t aLobbyId) {
     return mLobbies[aLobbyId];
 }
 
-void Server::LobbyListGet(Connection& aClient, std::string aGame) {
+void Server::LobbyListGet(Connection& aConnection, std::string aGame) {
     for (auto& it : mLobbies) {
         if (!it.second) { continue; }
         if (it.second->mGame != aGame) { continue; }
@@ -127,31 +132,42 @@ void Server::LobbyListGet(Connection& aClient, std::string aGame) {
             it.second->mGame,
             it.second->mVersion,
             it.second->mTitle,
-        }).Send(aClient);
+        }).Send(aConnection);
     }
 }
 
-void Server::OnClientDisconnect(Connection* client) {
-    if (client->mLobby) {
-        client->mLobby->Leave(client);
+void Server::OnConnectionDisconnect(Connection* connection) {
+    if (connection->mLobby) {
+        connection->mLobby->Leave(connection);
     }
-    std::lock_guard<std::mutex> guard(mClientsMutex);
-    mClients.erase(client->mId);
-    LOG_INFO("[%lu] Client removed, count: %lu", client->mId, mClients.size());
-    delete client;
+    std::lock_guard<std::mutex> guard(mConnectionsMutex);
+    mConnections.erase(connection->mId);
+    LOG_INFO("[%lu] Connection removed, count: %lu", connection->mId, mConnections.size());
+    delete connection;
 }
 
-void Server::OnLobbyJoin(Lobby* aLobby, Connection* aClient) {
+void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
     MPacketLobbyJoined({
         .lobbyId = aLobby->mId,
-        .userId = aClient->mId
+        .userId = aConnection->mId
     }).Send(*aLobby);
+
+    // inform joiner of other connections
+    for (auto& it : aLobby->mConnections) {
+        if (it->mId == aConnection->mId) {
+            continue;
+        }
+        MPacketLobbyJoined({
+            .lobbyId = aLobby->mId,
+            .userId = it->mId
+        }).Send(*aConnection);
+    }
 }
 
-void Server::OnLobbyLeave(Lobby* aLobby, Connection* aClient) {
+void Server::OnLobbyLeave(Lobby* aLobby, Connection* aConnection) {
     MPacketLobbyLeft({
         .lobbyId = aLobby->mId,
-        .userId = aClient->mId
+        .userId = aConnection->mId
     }).Send(*aLobby);
 }
 
@@ -160,14 +176,14 @@ void Server::OnLobbyDestroy(Lobby* aLobby) {
     LOG_INFO("[%lu] Lobby removed, count: %lu", aLobby->mId, mLobbies.size());
 }
 
-void Server::LobbyCreate(Connection* aClient, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections) {
-    // check if this client already has a lobby
-    if (aClient->mLobby) {
-        aClient->mLobby->Leave(aClient);
+void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections) {
+    // check if this connection already has a lobby
+    if (aConnection->mLobby) {
+        aConnection->mLobby->Leave(aConnection);
     }
 
     // create the new lobby
-    Lobby* lobby = new Lobby(aClient, mNextLobbyId++, aGame, aVersion, aTitle, aMaxConnections);
+    Lobby* lobby = new Lobby(aConnection, mNextLobbyId++, aGame, aVersion, aTitle, aMaxConnections);
     mLobbies[lobby->mId] = lobby;
 
     LOG_INFO("[%lu] Lobby added, count: %lu", lobby->mId, mLobbies.size());
@@ -179,7 +195,7 @@ void Server::LobbyCreate(Connection* aClient, std::string& aGame, std::string& a
         lobby->mGame,
         lobby->mVersion,
         lobby->mTitle,
-    }).Send(*aClient);
+    }).Send(*aConnection);
 
-    lobby->Join(aClient);
+    lobby->Join(aConnection);
 }

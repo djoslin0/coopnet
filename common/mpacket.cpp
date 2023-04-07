@@ -7,6 +7,7 @@
 #include "mpacket.hpp"
 #include "logging.hpp"
 #include "server.hpp"
+#include "client.hpp"
 
 static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacket(),
@@ -19,6 +20,8 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketLobbyLeft(),
     new MPacketLobbyListGet(),
     new MPacketLobbyListGot(),
+    new MPacketPeerSdp(),
+    new MPacketPeerCandidate(),
 };
 
 struct MPacketProccess {
@@ -123,9 +126,11 @@ void MPacket::Send(Lobby& lobby) {
 void MPacket::Process() {
     std::lock_guard<std::mutex> guard(sPacketProcessMutex);
     for (auto& it : sPacketProcess) {
+        // make sure connection is still valid
         Connection* connection = it.connection;
         if (!Connection::IsValid(connection)) { continue; }
 
+        // extract variables from data
         MPacketHeader header = *(MPacketHeader*)it.data;
         void* voidData = &it.data[sizeof(MPacketHeader)];
         void* stringData = &it.data[sizeof(MPacketHeader) + header.dataSize];
@@ -187,11 +192,11 @@ void MPacket::Process() {
             LOG_ERROR("Received packet string count mismatch!");
             continue;
         }
-        if (gServer && impl.serverPacket) {
+        if (gServer && impl.sendType == MSEND_TYPE_SERVER) {
             LOG_ERROR("Received server packet while being a server!");
             continue;
         }
-        if (!gServer && !impl.serverPacket) {
+        if (gClient && impl.sendType == MSEND_TYPE_CLIENT) {
             LOG_ERROR("Received client packet while being a client!");
             continue;
         }
@@ -246,6 +251,11 @@ void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, 
 
 bool MPacketJoined::Receive(Connection* connection) {
     LOG_INFO("MPACKET_JOINED received: userID %lu, version %u", mData.userId, mData.version);
+    if (mData.version != MPACKET_PROTOCOL_VERSION) {
+        // TODO: disconnect, etc
+        return false;
+    }
+    gClient->mCurrentUserId = mData.userId;
     return true;
 }
 
@@ -275,7 +285,7 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (lobby && lobby->Join(connection)) {
-        // ?
+        // TODO: wat do
     } else {
         // TODO: send out error packet
     }
@@ -285,6 +295,14 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 
 bool MPacketLobbyJoined::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %lu, userId %lu", mData.lobbyId, mData.userId);
+    if (mData.userId == gClient->mCurrentUserId) {
+        gClient->mCurrentLobbyId = mData.lobbyId;
+    } else if (mData.lobbyId == gClient->mCurrentLobbyId) {
+        gClient->PeerBegin(mData.userId);
+    } else {
+        // TODO: wat do
+    }
+
     return true;
 }
 
@@ -303,6 +321,17 @@ bool MPacketLobbyLeave::Receive(Connection* connection) {
 
 bool MPacketLobbyLeft::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_LEFT received: lobbyId %lu, userId %lu", mData.lobbyId, mData.userId);
+    if (mData.lobbyId != gClient->mCurrentLobbyId) {
+        return false;
+    }
+    if (mData.userId == gClient->mCurrentUserId) {
+        gClient->mCurrentLobbyId = 0;
+        gClient->PeerEndAll();
+    } else if (mData.lobbyId == gClient->mCurrentLobbyId) {
+        gClient->PeerEnd(mData.userId);
+    } else {
+        // TODO: wat do
+    }
     return true;
 }
 
@@ -319,4 +348,68 @@ bool MPacketLobbyListGot::Receive(Connection* connection) {
     std::string& title = mStringData[2];
     LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %lu, ownerId %lu, connections %u/%u, game '%s', version '%s', title '%s'", mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
     return true;
+}
+
+bool MPacketPeerSdp::Receive(Connection *connection) {
+    std::string& sdp = mStringData[0];
+    LOG_INFO("MPACKET_PEER_SDP received: lobbyId %lu, userId %lu, sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
+    if (gServer) {
+        Connection* other = gServer->ConnectionGet(mData.userId);
+        if (!other) {
+            LOG_ERROR("Could not find user: %lu", mData.userId);
+            return false;
+        }
+
+        MPacketPeerSdp({
+           .lobbyId = mData.lobbyId,
+           .userId = connection->mId
+        }, mStringData).Send(*other);
+        return true;
+    }
+
+    if (gClient) {
+        Peer* peer = gClient->PeerGet(mData.userId);
+        if (!peer) {
+            LOG_ERROR("Could not find peer: %lu", mData.userId);
+            return false;
+        }
+        peer->Connect(sdp.c_str());
+        return true;
+    }
+
+    // TODO: how to handle this scenario?
+    LOG_ERROR("Received peer sdp without being server or client");
+    return false;
+}
+
+bool MPacketPeerCandidate::Receive(Connection *connection) {
+    std::string& sdp = mStringData[0];
+    LOG_INFO("MPACKET_PEER_CANDIDATE received: lobbyId %lu, userId %lu, sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
+    if (gServer) {
+        Connection* other = gServer->ConnectionGet(mData.userId);
+        if (!other) {
+            LOG_ERROR("Could not find user: %lu", mData.userId);
+            return false;
+        }
+
+        MPacketPeerCandidate({
+           .lobbyId = mData.lobbyId,
+           .userId = connection->mId
+        }, mStringData).Send(*other);
+        return true;
+    }
+
+    if (gClient) {
+        Peer* peer = gClient->PeerGet(mData.userId);
+        if (!peer) {
+            LOG_ERROR("Could not find peer: %lu", mData.userId);
+            return false;
+        }
+        peer->CandidateAdd(sdp.c_str());
+        return true;
+    }
+
+    // TODO: how to handle this scenario?
+    LOG_ERROR("Received peer sdp without being server or client");
+    return false;
 }
