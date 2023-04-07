@@ -101,10 +101,12 @@ int main(int argc, char const *argv[]) {
         } else if (words[0] == "list" || words[0] == "ls") {
             if (words.size() == 2) {
                 MPacketLobbyListGet({
+                }, {
                     words[1]
                 }).Send(*sConnection);
             } else {
                 MPacketLobbyListGet({
+                }, {
                     "sm64ex-coop"
                 }).Send(*sConnection);
             }

@@ -61,6 +61,9 @@ typedef struct {
 } MPacketLobbyLeftData;
 
 typedef struct {
+} MPacketLobbyListGetData;
+
+typedef struct {
     uint64_t lobbyId;
     uint64_t ownerId;
     uint16_t connections;
@@ -72,18 +75,11 @@ typedef struct {
 class MPacket {
     private:
     protected:
-        enum MPacketType mType;
-
-        uint16_t mVoidDataSize = 0;
-        void* mVoidData = NULL;
-
+        void* mVoidData;
+        uint16_t mVoidDataSize;
         std::vector<std::string> mStringData;
 
-        MPacket(enum MPacketType aType, void* aData, uint16_t aDataSize) {
-            mType = aType;
-            mVoidData = aData;
-            mVoidDataSize = aDataSize;
-        }
+        virtual enum MPacketType GetPacketType() { return MPACKET_NONE; }
 
     public:
         void Send(Connection& connection);
@@ -92,73 +88,84 @@ class MPacket {
         static void Process();
 };
 
-class MPacketJoined : public MPacket {
-    private:
-        MPacketJoinedData mData;
+template<typename T>
+class MPacketImpl : public MPacket {
+    protected:
+        T mData;
     public:
-        MPacketJoined(MPacketJoinedData aData) : MPacket(MPACKET_JOINED, &mData, sizeof(MPacketJoinedData)) { mData = aData; }
+        MPacketImpl(T aData) {
+            mData = aData;
+            mVoidData = &mData;
+            mVoidDataSize = sizeof(T);
+        }
+
+        MPacketImpl(T aData, std::vector<std::string> aStringData) {
+            mData = aData;
+            mVoidData = &mData;
+            mVoidDataSize = sizeof(T);
+            mStringData = aStringData;
+        }
+};
+
+class MPacketJoined : public MPacketImpl<MPacketJoinedData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_JOINED; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyCreate : public MPacket {
-    private:
-        MPacketLobbyCreateData mData;
+class MPacketLobbyCreate : public MPacketImpl<MPacketLobbyCreateData> {
     public:
-        MPacketLobbyCreate(MPacketLobbyCreateData aData, std::vector<std::string> aStringData) : MPacket(MPACKET_LOBBY_CREATE, &mData, sizeof(MPacketLobbyCreateData)) { mData = aData; mStringData = aStringData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_CREATE; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyCreated : public MPacket {
-    private:
-        MPacketLobbyCreatedData mData;
+class MPacketLobbyCreated : public MPacketImpl<MPacketLobbyCreatedData> {
     public:
-        MPacketLobbyCreated(MPacketLobbyCreatedData aData, std::vector<std::string> aStringData) : MPacket(MPACKET_LOBBY_CREATED, &mData, sizeof(MPacketLobbyCreatedData)) { mData = aData; mStringData = aStringData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_CREATED; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyJoin : public MPacket {
-    private:
-        MPacketLobbyJoinData mData;
+class MPacketLobbyJoin : public MPacketImpl<MPacketLobbyJoinData> {
     public:
-        MPacketLobbyJoin(MPacketLobbyJoinData aData) : MPacket(MPACKET_LOBBY_JOIN, &mData, sizeof(MPacketLobbyJoinData)) { mData = aData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_JOIN; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyJoined : public MPacket {
-    private:
-        MPacketLobbyJoinedData mData;
+class MPacketLobbyJoined : public MPacketImpl<MPacketLobbyJoinedData> {
     public:
-        MPacketLobbyJoined(MPacketLobbyJoinedData aData) : MPacket(MPACKET_LOBBY_JOINED, &mData, sizeof(MPacketLobbyJoinedData)) { mData = aData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_JOINED; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyLeave : public MPacket {
-    private:
-        MPacketLobbyLeaveData mData;
+class MPacketLobbyLeave : public MPacketImpl<MPacketLobbyLeaveData> {
     public:
-        MPacketLobbyLeave(MPacketLobbyLeaveData aData) : MPacket(MPACKET_LOBBY_LEAVE, &mData, sizeof(MPacketLobbyLeaveData)) { mData = aData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_LEAVE; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyLeft : public MPacket {
-    private:
-        MPacketLobbyLeftData mData;
+class MPacketLobbyLeft : public MPacketImpl<MPacketLobbyLeftData> {
     public:
-        MPacketLobbyLeft(MPacketLobbyLeftData aData) : MPacket(MPACKET_LOBBY_LEFT, &mData, sizeof(MPacketLobbyLeftData)) { mData = aData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_LEFT; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyListGet : public MPacket {
-    private:
+class MPacketLobbyListGet : public MPacketImpl<MPacketLobbyListGetData> {
     public:
-        MPacketLobbyListGet(std::vector<std::string> aStringData) : MPacket(MPACKET_LOBBY_LIST_GET, NULL, 0) { mStringData = aStringData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_LIST_GET; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
 
-class MPacketLobbyListGot : public MPacket {
-    private:
-        MPacketLobbyListGotData mData;
+class MPacketLobbyListGot : public MPacketImpl<MPacketLobbyListGotData> {
     public:
-        MPacketLobbyListGot(MPacketLobbyListGotData data, std::vector<std::string> aStringData) : MPacket(MPACKET_LOBBY_LIST_GOT, &mData, sizeof(MPacketLobbyListGotData)) { mData = data; mStringData = aStringData; }
+        using MPacketImpl::MPacketImpl;
+        virtual enum MPacketType GetPacketType() { return MPACKET_LOBBY_LIST_GOT; }
         static bool Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
 };
