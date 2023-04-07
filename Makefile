@@ -1,16 +1,16 @@
-CC = gcc
-CFLAGS = -Wall -Werror
+CXX = g++
+CXXFLAGS = -Wall -Werror -std=c++11 -g
 INCLUDES = -Icommon
 LDFLAGS = -pthread
 
-COMMON_SRC := $(wildcard common/*.c)
-COMMON_OBJ := $(patsubst common/%.c, bin/o/%.o, $(COMMON_SRC))
+COMMON_SRC := $(wildcard common/*.cpp)
+COMMON_OBJ := $(patsubst common/%.cpp, bin/o/%.o, $(COMMON_SRC))
 
-CLIENT_SRC = client/client.c $(COMMON_SRC)
-CLIENT_OBJ = $(patsubst %.c, bin/o/%.o, $(CLIENT_SRC))
+CLIENT_SRC = $(wildcard client/*.cpp) $(COMMON_SRC)
+CLIENT_OBJ = $(patsubst %.cpp, bin/o/%.o, $(CLIENT_SRC))
 
-SERVER_SRC = server/server.c $(COMMON_SRC)
-SERVER_OBJ = $(patsubst %.c, bin/o/%.o, $(SERVER_SRC))
+SERVER_SRC = $(wildcard server/*.cpp) $(COMMON_SRC)
+SERVER_OBJ = $(patsubst %.cpp, bin/o/%.o, $(SERVER_SRC))
 
 BIN_DIR = bin
 
@@ -19,13 +19,13 @@ BIN_DIR = bin
 all: client server
 
 client: $(CLIENT_OBJ) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(BIN_DIR)/$@ $(CLIENT_OBJ)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $(BIN_DIR)/$@ $(CLIENT_OBJ)
 
 server: $(SERVER_OBJ) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ)
 
-bin/o/%.o: %.c | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+bin/o/%.o: %.cpp | $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
