@@ -8,19 +8,17 @@
 #include "logging.hpp"
 #include "server.hpp"
 
-using ReceiveFunction = bool (*)(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData);
-
-static ReceiveFunction sReceiveFunctions[MPACKET_MAX] = {
-    nullptr,
-    MPacketJoined::Receive,
-    MPacketLobbyCreate::Receive,
-    MPacketLobbyCreated::Receive,
-    MPacketLobbyJoin::Receive,
-    MPacketLobbyJoined::Receive,
-    MPacketLobbyLeave::Receive,
-    MPacketLobbyLeft::Receive,
-    MPacketLobbyListGet::Receive,
-    MPacketLobbyListGot::Receive,
+static MPacket* sPacketByType[MPACKET_MAX] = {
+    new MPacket(),
+    new MPacketJoined(),
+    new MPacketLobbyCreate(),
+    new MPacketLobbyCreated(),
+    new MPacketLobbyJoin(),
+    new MPacketLobbyJoined(),
+    new MPacketLobbyLeave(),
+    new MPacketLobbyLeft(),
+    new MPacketLobbyListGet(),
+    new MPacketLobbyListGot(),
 };
 
 struct MPacketProccess {
@@ -44,8 +42,9 @@ void MPacket::Send(Connection& connection) {
     }
 
     // setup packet header
+    MPacketImplSettings impl = GetImplSettings();
     MPacketHeader pHeader = {
-        .packetType = GetPacketType(),
+        .packetType = impl.packetType,
         .dataSize = mVoidDataSize,
         .stringSize = stringSize
     };
@@ -132,8 +131,26 @@ void MPacket::Process() {
         void* stringData = &it.data[sizeof(MPacketHeader) + header.dataSize];
         bool parseError = false;
 
+        // sanity check packet type
+        if (header.packetType >= MPACKET_MAX || header.packetType == MPACKET_NONE) {
+            LOG_ERROR("Received an unknown packet type: %u, data size: %u, string size: %u", header.packetType, header.dataSize, header.stringSize);
+            continue;
+        }
+
+        // receive packet
+        MPacket* packet = sPacketByType[header.packetType];
+
+        // sanity check data size
+        if (header.dataSize != packet->mVoidDataSize) {
+            LOG_ERROR("Received the wrong data size: %u != %u", header.dataSize, packet->mVoidDataSize);
+            continue;
+        }
+
+        // receive data
+        memcpy(packet->mVoidData, voidData, packet->mVoidDataSize);
+
         // receive strings
-        std::vector<std::string> strings;
+        packet->mStringData.clear();
         uint8_t* c = (uint8_t*)stringData;
         uint8_t* climit = c + header.stringSize;
         while (c < climit) {
@@ -155,18 +172,35 @@ void MPacket::Process() {
             c += length;
 
             // remember string
-            strings.push_back(cstr);
+            packet->mStringData.push_back(cstr);
             free(cstr);
         }
         if (c != climit) { parseError = true; }
 
+        // check impl settings
+        MPacketImplSettings impl = packet->GetImplSettings();
+        if (header.packetType != impl.packetType) {
+            LOG_ERROR("Received packet type mismatch: %u != %u", header.packetType, impl.packetType);
+            continue;
+        }
+        if (packet->mStringData.size() != impl.stringCount) {
+            LOG_ERROR("Received packet string count mismatch!");
+            continue;
+        }
+        if (gServer && impl.serverPacket) {
+            LOG_ERROR("Received server packet while being a server!");
+            continue;
+        }
+        if (!gServer && !impl.serverPacket) {
+            LOG_ERROR("Received client packet while being a client!");
+            continue;
+        }
+
         // receive the packet
         if (parseError) {
             LOG_ERROR("Packet parse error!");
-        } else if (header.packetType >= MPACKET_MAX || header.packetType == MPACKET_NONE) {
-            LOG_ERROR("Received an unknown packet type: %u, data size: %u, string size: %u", header.packetType, header.dataSize, header.stringSize);
         } else {
-            bool ret = sReceiveFunctions[header.packetType](connection, voidData, header.dataSize, strings);
+            bool ret = packet->Receive(connection);
             if (!ret) { LOG_ERROR("Packet receive error!"); }
         }
     }
@@ -210,61 +244,36 @@ void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, 
     }
 }
 
-bool MPacketJoined::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketJoinedData)) { return false; }
-    if (aStringData.size() != 0) { return false; }
+bool MPacketJoined::Receive(Connection* connection) {
+    LOG_INFO("MPACKET_JOINED received: userID %lu, version %u", mData.userId, mData.version);
+    return true;
+}
 
-    MPacketJoinedData* data = (MPacketJoinedData*)aVoidData;
+bool MPacketLobbyCreate::Receive(Connection* connection) {
+    std::string& game = mStringData[0];
+    std::string& version = mStringData[1];
+    std::string& title = mStringData[2];
 
-    LOG_INFO("MPACKET_JOINED received: userID %lu, version %u", data->userId, data->version);
+    LOG_INFO("MPACKET_LOBBY_CREATE received: game '%s', version '%s', title '%s', maxconnections %u", game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
+    gServer->LobbyCreate(connection, game, version, title, mData.maxConnections);
 
     return true;
 }
 
-bool MPacketLobbyCreate::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketLobbyCreateData)) { return false; }
-    if (aStringData.size() != 3) { return false; }
-    if (!gServer) { return false; }
+bool MPacketLobbyCreated::Receive(Connection* connection) {
+    std::string& game = mStringData[0];
+    std::string& version = mStringData[1];
+    std::string& title = mStringData[2];
 
-    MPacketLobbyCreateData* data = (MPacketLobbyCreateData*)aVoidData;
-    std::string& game = aStringData[0];
-    std::string& version = aStringData[1];
-    std::string& title = aStringData[2];
-
-    LOG_INFO("MPACKET_LOBBY_CREATE received: game '%s', version '%s', title '%s', maxconnections %u", game.c_str(), version.c_str(), title.c_str(), data->maxConnections);
-    gServer->LobbyCreate(connection, game, version, title, data->maxConnections);
+    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %lu, game '%s', version '%s', title '%s'", mData.lobbyId, game.c_str(), version.c_str(), title.c_str());
 
     return true;
 }
 
-bool MPacketLobbyCreated::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketLobbyCreatedData)) { return false; }
-    if (aStringData.size() != 3) { return false; }
+bool MPacketLobbyJoin::Receive(Connection* connection) {
+    LOG_INFO("MPACKET_LOBBY_JOIN received: lobbId %lu", mData.lobbyId);
 
-    MPacketLobbyCreatedData* data = (MPacketLobbyCreatedData*)aVoidData;
-    std::string& game = aStringData[0];
-    std::string& version = aStringData[1];
-    std::string& title = aStringData[2];
-
-    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %lu, game '%s', version '%s', title '%s'", data->lobbyId, game.c_str(), version.c_str(), title.c_str());
-
-    return true;
-}
-
-bool MPacketLobbyJoin::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketLobbyJoinData)) { return false; }
-    if (aStringData.size() != 0) { return false; }
-    if (!gServer) { return false; }
-
-    MPacketLobbyJoinData* data = (MPacketLobbyJoinData*)aVoidData;
-
-    LOG_INFO("MPACKET_LOBBY_JOIN received: lobbId %lu", data->lobbyId);
-
-    Lobby* lobby = gServer->LobbyGet(data->lobbyId);
+    Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (lobby && lobby->Join(connection)) {
         // ?
     } else {
@@ -274,29 +283,15 @@ bool MPacketLobbyJoin::Receive(Connection* connection, void* aVoidData, uint16_t
     return true;
 }
 
-bool MPacketLobbyJoined::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketLobbyJoinedData)) { return false; }
-    if (aStringData.size() != 0) { return false; }
-
-    MPacketLobbyJoinedData* data = (MPacketLobbyJoinedData*)aVoidData;
-
-    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %lu, userId %lu", data->lobbyId, data->userId);
-
+bool MPacketLobbyJoined::Receive(Connection* connection) {
+    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %lu, userId %lu", mData.lobbyId, mData.userId);
     return true;
 }
 
-bool MPacketLobbyLeave::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketLobbyLeaveData)) { return false; }
-    if (aStringData.size() != 0) { return false; }
-    if (!gServer) { return false; }
+bool MPacketLobbyLeave::Receive(Connection* connection) {
+    LOG_INFO("MPACKET_LOBBY_LEAVE received: lobbyId %lu", mData.lobbyId);
 
-    MPacketLobbyLeaveData* data = (MPacketLobbyLeaveData*)aVoidData;
-
-    LOG_INFO("MPACKET_LOBBY_LEAVE received: lobbyId %lu", data->lobbyId);
-
-    Lobby* lobby = gServer->LobbyGet(data->lobbyId);
+    Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (lobby) {
         lobby->Leave(connection);
     } else {
@@ -306,43 +301,22 @@ bool MPacketLobbyLeave::Receive(Connection* connection, void* aVoidData, uint16_
     return true;
 }
 
-bool MPacketLobbyLeft::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketLobbyLeftData)) { return false; }
-    if (aStringData.size() != 0) { return false; }
-
-    MPacketLobbyLeftData* data = (MPacketLobbyLeftData*)aVoidData;
-
-    LOG_INFO("MPACKET_LOBBY_LEFT received: lobbyId %lu, userId %lu", data->lobbyId, data->userId);
-
+bool MPacketLobbyLeft::Receive(Connection* connection) {
+    LOG_INFO("MPACKET_LOBBY_LEFT received: lobbyId %lu, userId %lu", mData.lobbyId, mData.userId);
     return true;
 }
 
-bool MPacketLobbyListGet::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != 0) { return false; }
-    if (aStringData.size() != 1) { return false; }
-    if (!gServer) { return false; }
-
-    std::string& game = aStringData[0];
-
+bool MPacketLobbyListGet::Receive(Connection* connection) {
+    std::string& game = mStringData[0];
     LOG_INFO("MPACKET_LOBBY_LIST_GET received: game '%s'", game.c_str());
     gServer->LobbyListGet(*connection, game);
-
     return true;
 }
 
-bool MPacketLobbyListGot::Receive(Connection* connection, void* aVoidData, uint16_t aVoidDataSize, std::vector<std::string>& aStringData) {
-    if (!aVoidData) { return false; }
-    if (aVoidDataSize != sizeof(MPacketLobbyListGotData)) { return false; }
-    if (aStringData.size() != 3) { return false; }
-
-    MPacketLobbyListGotData* data = (MPacketLobbyListGotData*)aVoidData;
-    std::string& game = aStringData[0];
-    std::string& version = aStringData[1];
-    std::string& title = aStringData[2];
-
-    LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %lu, ownerId %lu, connections %u/%u, game '%s', version '%s', title '%s'", data->lobbyId, data->ownerId, data->connections, data->maxConnections, game.c_str(), version.c_str(), title.c_str());
-
+bool MPacketLobbyListGot::Receive(Connection* connection) {
+    std::string& game = mStringData[0];
+    std::string& version = mStringData[1];
+    std::string& title = mStringData[2];
+    LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %lu, ownerId %lu, connections %u/%u, game '%s', version '%s', title '%s'", mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
     return true;
 }
