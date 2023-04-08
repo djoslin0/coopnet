@@ -82,9 +82,9 @@ void Peer::SendSdp() {
     juice_gather_candidates(mAgent);
 }
 
-void Peer::Send(const char* aData, size_t aDataLength) {
+void Peer::Send(const uint8_t* aData, size_t aDataLength) {
     LOG_INFO("Peer sending to (%lu)\n", mId);
-    juice_send(mAgent, aData, aDataLength);
+    juice_send(mAgent, (const char*)aData, aDataLength);
 }
 
 void Peer::Disconnect() {

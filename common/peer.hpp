@@ -21,7 +21,7 @@ class Peer {
         void Connect(const char* aSdp);
         void Disconnect();
         void CandidateAdd(const char* aSdp);
-        void Send(const char* aData, size_t aDataLength);
+        void Send(const uint8_t* aData, size_t aDataLength);
 
         void OnStateChanged(juice_state_t aState);
         void OnCandidate(const char* aSdp);

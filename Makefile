@@ -16,15 +16,21 @@ BIN_DIR = bin
 LIB_DIR = lib
 LIBS = -ljuice
 
-.PHONY: all client server clean
+.PHONY: all client server lib clean
 
-all: client server
+all: client server lib
 
 client: $(CLIENT_OBJ) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(CLIENT_OBJ) $(LIBS)
 
 server: $(SERVER_OBJ) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ) $(LIBS)
+
+lib: $(COMMON_OBJ) | $(BIN_DIR)
+	ar rcs $(BIN_DIR)/libcoopnet.a $(COMMON_OBJ)
+
+$(COMMON_OBJ): $(COMMON_SRC) | $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 bin/o/%.o: %.cpp | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@

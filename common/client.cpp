@@ -1,12 +1,23 @@
 #include "client.hpp"
 #include "mpacket.hpp"
+#include "utils.hpp"
 #include "logging.hpp"
 
 Client* gClient = NULL;
 
 static void sUpdateStart(Client* client)  { client->Update(); }
 
-bool Client::Begin(uint32_t aPort)
+
+Client::~Client() {
+    if (mConnection) {
+        Disconnect();
+        mConnection->Disconnect();
+        delete mConnection;
+        mConnection = nullptr;
+    }
+}
+
+bool Client::Begin(std::string aHost, uint32_t aPort)
 {
     mConnection = new Connection(0);
 
@@ -24,7 +35,7 @@ bool Client::Begin(uint32_t aPort)
 
     // type of socket created
     mConnection->mAddress.sin_family = AF_INET;
-    mConnection->mAddress.sin_addr.s_addr = INADDR_ANY;
+    mConnection->mAddress.sin_addr.s_addr = GetAddrFromDomain(aHost);
     mConnection->mAddress.sin_port = htons(aPort);
 
     // bind the socket to localhost port 8888
@@ -43,7 +54,8 @@ bool Client::Begin(uint32_t aPort)
 }
 
 void Client::Update() {
-    while (mConnection->mActive) {
+    // TODO: make this non-threaded
+    while (mConnection && mConnection->mActive) {
         MPacket::Process();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -51,7 +63,9 @@ void Client::Update() {
 
 void Client::Disconnect() {
     PeerEndAll();
-    mConnection->Disconnect();
+    if (mConnection) {
+        mConnection->Disconnect();
+    }
 }
 
 void Client::PeerBegin(uint64_t userId) {
@@ -84,13 +98,22 @@ void Client::PeerEndAll() {
 Peer* Client::PeerGet(uint64_t userId) {
     return mPeers[userId];
 }
-void Client::PeerSend(const char* aData, size_t aDataLength) {
+
+bool Client::PeerSend(const uint8_t* aData, size_t aDataLength) {
     for (auto& it : mPeers) {
         Peer* peer = it.second;
         if (peer) {
             peer->Send(aData, aDataLength);
         }
     }
+    return (mPeers.size() > 0);
+}
+
+bool Client::PeerSendTo(uint64_t aPeerId, const uint8_t* aData, size_t aDataLength) {
+    Peer* peer = mPeers[aPeerId];
+    if (!peer) { return false; }
+    peer->Send(aData, aDataLength);
+    return true;
 }
 
 void Client::LobbyCreate(std::string aGame, std::string aVersion, std::string aTitle, uint16_t aMaxConnections) {

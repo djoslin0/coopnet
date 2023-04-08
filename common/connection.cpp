@@ -4,6 +4,7 @@
 #include <set>
 #include <unistd.h>
 
+#include "coopnet.h"
 #include "connection.hpp"
 #include "logging.hpp"
 #include "mpacket.hpp"
@@ -40,7 +41,7 @@ void Connection::Begin() {
     mActive = true;
 
     // set timeout
-    struct timeval tv = { 5, 0 };
+    struct timeval tv = { 1, 0 };
     setsockopt(mSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
     // convert address
@@ -104,5 +105,8 @@ void Connection::Receive() {
     // run callback
     if (gOnConnectionDisconnected) {
         gOnConnectionDisconnected(this);
+    }
+    if (gCoopNetCallbacks.OnDisconnected) {
+        gCoopNetCallbacks.OnDisconnected();
     }
 }

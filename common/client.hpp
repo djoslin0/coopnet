@@ -18,7 +18,9 @@ class Client {
         StunTurnServer mStunServer;
         std::vector<StunTurnServer> mTurnServers;
 
-        bool Begin(uint32_t aPort);
+        ~Client();
+
+        bool Begin(std::string aHost, uint32_t aPort);
         void Update();
         void Disconnect();
 
@@ -26,7 +28,8 @@ class Client {
         void PeerEnd(uint64_t userId);
         void PeerEndAll();
         Peer* PeerGet(uint64_t userId);
-        void PeerSend(const char* aData, size_t aDataLength);
+        bool PeerSend(const uint8_t* aData, size_t aDataLength);
+        bool PeerSendTo(uint64_t aPeerId, const uint8_t* aData, size_t aDataLength);
 
         void LobbyCreate(std::string aGame, std::string aVersion, std::string aTitle, uint16_t aMaxConnections);
         void LobbyJoin(uint64_t aLobbyId);

@@ -2,26 +2,21 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include "client.hpp"
-#include "connection.hpp"
+#include <vector>
+#include "coopnet.h"
 #include "logging.hpp"
 
+#define HOST "localhost"
 #define PORT 8888
 #define EXIT_FAILURE 1
 
-static void sOnConnectionDisconnected(Connection* connection) { exit(0); }
+static void sOnDisconnected(void) { exit(0); }
 
 int main(int argc, char const *argv[]) {
-    /*extern int test_connectivity();
-    test_connectivity();
-    exit(0);*/
-
     // setup callbacks
-    gOnConnectionDisconnected = sOnConnectionDisconnected;
+    gCoopNetCallbacks.OnDisconnected = sOnDisconnected;
 
-    gClient = new Client();
-
-    if (!gClient->Begin(PORT)) {
+    if (coopnet_begin(HOST, PORT) != COOPNET_OK) {
         LOG_ERROR("Failed to begin client");
         exit(EXIT_FAILURE);
     }
@@ -44,30 +39,32 @@ int main(int argc, char const *argv[]) {
 
         if (words[0] == "create" || words[0] == "c") {
             if (words.size() == 5) {
-                gClient->LobbyCreate(words[1], words[2], words[3], (uint16_t)atoi(words[4].c_str()));
+                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), (uint16_t)atoi(words[4].c_str()));
             } else {
-                gClient->LobbyCreate("sm64ex-coop", "beta 34", "This is a title!", 16);
+                coopnet_lobby_create("sm64ex-coop", "beta 34", "This is a title!", 16);
             }
         } else if (words[0] == "join" || words[0] == "j") {
             if (words.size() == 2) {
-                gClient->LobbyJoin((uint64_t)atoi(words[1].c_str()));
+                coopnet_lobby_join((uint64_t)atoi(words[1].c_str()));
             }
         } else if (words[0] == "leave" || words[0] == "l") {
             if (words.size() == 2) {
-                gClient->LobbyLeave((uint64_t)atoi(words[1].c_str()));
+                coopnet_lobby_leave((uint64_t)atoi(words[1].c_str()));
             }
         } else if (words[0] == "list" || words[0] == "ls") {
             if (words.size() == 2) {
-                gClient->LobbyListGet(words[1]);
+                coopnet_lobby_list_get(words[1].c_str());
             } else {
-                gClient->LobbyListGet("sm64ex-coop");
+                coopnet_lobby_list_get("sm64ex-coop");
             }
         } else if (words[0] == "send" || words[0] == "s") {
             if (words.size() == 2) {
-                gClient->PeerSend(words[1].c_str(), words[1].length() + 1);
+                coopnet_send((const uint8_t*)words[1].c_str(), words[1].length() + 1);
             }
-        } else if (words[0] == "disconnect" || words[0] == "d") {
-            gClient->Disconnect();
+        } else if (words[0] == "connect") {
+            coopnet_begin(HOST, PORT);
+        } else if (words[0] == "disconnect") {
+            coopnet_shutdown();
         }
 
     }
