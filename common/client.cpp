@@ -49,6 +49,11 @@ void Client::Update() {
     }
 }
 
+void Client::Disconnect() {
+    PeerEndAll();
+    mConnection->Disconnect();
+}
+
 void Client::PeerBegin(uint64_t userId) {
     mPeers[userId] = new Peer(this, userId);
     LOG_INFO("Peer begin, count: %lu", mPeers.size());

@@ -20,6 +20,7 @@ class Client {
 
         bool Begin(uint32_t aPort);
         void Update();
+        void Disconnect();
 
         void PeerBegin(uint64_t userId);
         void PeerEnd(uint64_t userId);

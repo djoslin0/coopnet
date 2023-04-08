@@ -66,6 +66,8 @@ int main(int argc, char const *argv[]) {
             if (words.size() == 2) {
                 gClient->PeerSend(words[1].c_str(), words[1].length() + 1);
             }
+        } else if (words[0] == "disconnect" || words[0] == "d") {
+            gClient->Disconnect();
         }
 
     }

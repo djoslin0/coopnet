@@ -25,6 +25,7 @@ class Connection {
         ~Connection();
         static bool IsValid(Connection* connection);
         void Begin();
+        void Disconnect();
         void Receive();
 };
 

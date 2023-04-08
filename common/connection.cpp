@@ -2,6 +2,7 @@
 #include <string>
 #include <thread>
 #include <set>
+#include <unistd.h>
 
 #include "connection.hpp"
 #include "logging.hpp"
@@ -27,6 +28,7 @@ Connection::Connection(uint64_t id) {
 Connection::~Connection() {
     std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
     sAllConnections.erase(this);
+    LOG_INFO("Connections: %lu", sAllConnections.size());
 }
 
 bool Connection::IsValid(Connection* connection) {
@@ -38,7 +40,7 @@ void Connection::Begin() {
     mActive = true;
 
     // set timeout
-    struct timeval tv = { 10, 0 };
+    struct timeval tv = { 5, 0 };
     setsockopt(mSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
     // convert address
@@ -53,13 +55,19 @@ void Connection::Begin() {
     mThread.detach();
 }
 
+void Connection::Disconnect() {
+    if (!mActive) { return; }
+    mActive = false;
+    close(mSocket);
+}
+
 void Connection::Receive() {
     uint8_t data[MPACKET_MAX_SIZE] = { 0 };
     uint16_t dataSize = 0;
 
     LOG_INFO("[%lu] Thread started", mId);
 
-    while (true) {
+    while (mActive) {
         // receive from socket
         socklen_t len = sizeof(struct sockaddr_in);
         int ret = recvfrom(mSocket, &data[dataSize], MPACKET_MAX_SIZE - dataSize, 0, (struct sockaddr *) &mAddress, &len);

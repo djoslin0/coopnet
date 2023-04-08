@@ -268,7 +268,7 @@ void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, 
 bool MPacketJoined::Receive(Connection* connection) {
     LOG_INFO("MPACKET_JOINED received: userID %lu, version %u", mData.userId, mData.version);
     if (mData.version != MPACKET_PROTOCOL_VERSION) {
-        // TODO: disconnect, etc
+        gClient->Disconnect();
         return false;
     }
     gClient->mCurrentUserId = mData.userId;
