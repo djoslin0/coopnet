@@ -28,7 +28,6 @@ StunTurnServer sTurnServers[] = {
     },
 };
 
-static void sOnConnectionDisconnected(Connection* connection) { gServer->OnConnectionDisconnect(connection); }
 static void sOnLobbyJoin(Lobby* lobby, Connection* connection) { gServer->OnLobbyJoin(lobby, connection); }
 static void sOnLobbyLeave(Lobby* lobby, Connection* connection) { gServer->OnLobbyLeave(lobby, connection); }
 static void sOnLobbyDestroy(Lobby* lobby) { gServer->OnLobbyDestroy(lobby); }
@@ -79,7 +78,6 @@ bool Server::Begin(uint32_t aPort) {
     mThreadUpdate.detach();
 
     // setup callbacks
-    gOnConnectionDisconnected = sOnConnectionDisconnected;
     gOnLobbyJoin = sOnLobbyJoin;
     gOnLobbyLeave = sOnLobbyLeave;
     gOnLobbyDestroy = sOnLobbyDestroy;
@@ -137,13 +135,25 @@ void Server::Receive() {
 
 void Server::Update() {
     while (true) {
-        MPacket::Process();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::lock_guard<std::mutex> guard(mConnectionsMutex);
+
+        for (auto it = mConnections.begin(); it != mConnections.end(); ) {
+            Connection* connection = it->second;
+            // erase the connection if it's inactive, otherwise receive packets
+            if (!connection->mActive) {
+                it = mConnections.erase(it);
+                LOG_INFO("[%lu] Connection removed, count: %lu", connection->mId, mConnections.size());
+                delete connection;
+            } else {
+                it->second->Receive();
+                ++it;
+            }
+        }
     }
 }
 
 Connection *Server::ConnectionGet(uint64_t aUserId) {
-    std::lock_guard<std::mutex> guard(mConnectionsMutex);
     return mConnections[aUserId];
 }
 
@@ -167,16 +177,6 @@ void Server::LobbyListGet(Connection& aConnection, std::string aGame) {
             it.second->mTitle,
         }).Send(aConnection);
     }
-}
-
-void Server::OnConnectionDisconnect(Connection* connection) {
-    if (connection->mLobby) {
-        connection->mLobby->Leave(connection);
-    }
-    std::lock_guard<std::mutex> guard(mConnectionsMutex);
-    mConnections.erase(connection->mId);
-    LOG_INFO("[%lu] Connection removed, count: %lu", connection->mId, mConnections.size());
-    delete connection;
 }
 
 void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {

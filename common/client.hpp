@@ -8,7 +8,6 @@
 
 class Client {
     private:
-        std::thread mThreadUpdate;
         std::map<uint64_t, Peer*> mPeers;
     public:
         uint64_t mCurrentUserId = 0;

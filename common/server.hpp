@@ -30,7 +30,6 @@ class Server {
         Lobby* LobbyGet(uint64_t aLobbyId);
         void LobbyListGet(Connection& aConnection, std::string aGame);
 
-        void OnConnectionDisconnect(Connection* aConnection);
         void OnLobbyJoin(Lobby* aLobby, Connection* aConnection);
         void OnLobbyLeave(Lobby* aLobby, Connection* aConnection);
         void OnLobbyDestroy(Lobby* aLobby);

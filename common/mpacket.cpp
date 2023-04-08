@@ -27,14 +27,6 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketError(),
 };
 
-struct MPacketProccess {
-    Connection* connection;
-    uint8_t* data;
-};
-
-std::vector<struct MPacketProccess> sPacketProcess;
-std::mutex sPacketProcessMutex;
-
 void MPacket::Send(Connection& connection) {
     // make sure its connected
     if (!connection.mActive) {
@@ -126,107 +118,101 @@ void MPacket::Send(Lobby& lobby) {
     }
 }
 
-void MPacket::Process() {
-    std::lock_guard<std::mutex> guard(sPacketProcessMutex);
-    for (auto& it : sPacketProcess) {
-        // make sure connection is still valid
-        Connection* connection = it.connection;
-        if (!Connection::IsValid(connection)) { continue; }
+void MPacket::Process(Connection* connection, uint8_t* aData) {
+    // make sure connection is still valid
+    if (!Connection::IsValid(connection)) { return; }
 
-        // extract variables from data
-        MPacketHeader header = *(MPacketHeader*)it.data;
-        void* voidData = &it.data[sizeof(MPacketHeader)];
-        void* stringData = &it.data[sizeof(MPacketHeader) + header.dataSize];
-        bool parseError = false;
+    // extract variables from data
+    MPacketHeader header = *(MPacketHeader*)aData;
+    void* voidData = &aData[sizeof(MPacketHeader)];
+    void* stringData = &aData[sizeof(MPacketHeader) + header.dataSize];
+    bool parseError = false;
 
-        /*LOG_INFO("Processing data:");
-        for (size_t i = 0; i < (size_t)(sizeof(MPacketHeader) + header.dataSize + header.stringSize); i++) {
-            printf("  %02X", ((uint8_t*)it.data)[i]);
-        }
-        printf("\n");*/
-
-        // sanity check packet type
-        if (header.packetType >= MPACKET_MAX || header.packetType == MPACKET_NONE) {
-            LOG_ERROR("Received an unknown packet type: %u, data size: %u, string size: %u", header.packetType, header.dataSize, header.stringSize);
-            continue;
-        }
-
-        // receive packet
-        MPacket* packet = sPacketByType[header.packetType];
-
-        // sanity check data size
-        if (header.dataSize != packet->mVoidDataSize) {
-            LOG_ERROR("Received the wrong data size: %u != %u", header.dataSize, packet->mVoidDataSize);
-            continue;
-        }
-
-        // receive data
-        memcpy(packet->mVoidData, voidData, packet->mVoidDataSize);
-
-        // receive strings
-        packet->mStringData.clear();
-        uint8_t* c = (uint8_t*)stringData;
-        uint8_t* climit = c + header.stringSize;
-        while (c < climit) {
-            // retrieve string length
-            uint16_t length = *(uint16_t*)c;
-            c += sizeof(uint16_t);
-            if (c >= climit) {
-                if (length == 0) {
-                    packet->mStringData.push_back("");
-                    break;
-                }
-                parseError = true;
-                break;
-            }
-
-            // allocate string
-            char* cstr = (char*)malloc(length + 1);
-            if (!cstr) {
-                LOG_ERROR("Failed to allocate string");
-                parseError = true;
-                break;
-            }
-
-            // fill string
-            snprintf(cstr, length + 1, "%s", c);
-            c += length;
-
-            // remember string
-            packet->mStringData.push_back(cstr);
-            free(cstr);
-        }
-        if (c != climit) { parseError = true; }
-
-        // check impl settings
-        MPacketImplSettings impl = packet->GetImplSettings();
-        if (header.packetType != impl.packetType) {
-            LOG_ERROR("Received packet type mismatch: %u != %u", header.packetType, impl.packetType);
-            continue;
-        }
-        if (packet->mStringData.size() != impl.stringCount) {
-            LOG_ERROR("Received packet string count mismatch: %lu != %u", packet->mStringData.size(), impl.stringCount);
-            continue;
-        }
-        if (gServer && impl.sendType == MSEND_TYPE_SERVER) {
-            LOG_ERROR("Received server packet while being a server!");
-            continue;
-        }
-        if (gClient && impl.sendType == MSEND_TYPE_CLIENT) {
-            LOG_ERROR("Received client packet while being a client!");
-            continue;
-        }
-
-        // receive the packet
-        if (parseError) {
-            LOG_ERROR("Packet parse error!");
-        } else {
-            bool ret = packet->Receive(connection);
-            if (!ret) { LOG_ERROR("Packet receive error!"); }
-        }
+    /*LOG_INFO("Processing data:");
+    for (size_t i = 0; i < (size_t)(sizeof(MPacketHeader) + header.dataSize + header.stringSize); i++) {
+        printf("  %02X", ((uint8_t*)aData)[i]);
     }
-    sPacketProcess.clear();
+    printf("\n");*/
 
+    // sanity check packet type
+    if (header.packetType >= MPACKET_MAX || header.packetType == MPACKET_NONE) {
+        LOG_ERROR("Received an unknown packet type: %u, data size: %u, string size: %u", header.packetType, header.dataSize, header.stringSize);
+        return;
+    }
+
+    // receive packet
+    MPacket* packet = sPacketByType[header.packetType];
+
+    // sanity check data size
+    if (header.dataSize != packet->mVoidDataSize) {
+        LOG_ERROR("Received the wrong data size: %u != %u", header.dataSize, packet->mVoidDataSize);
+        return;
+    }
+
+    // receive data
+    memcpy(packet->mVoidData, voidData, packet->mVoidDataSize);
+
+    // receive strings
+    packet->mStringData.clear();
+    uint8_t* c = (uint8_t*)stringData;
+    uint8_t* climit = c + header.stringSize;
+    while (c < climit) {
+        // retrieve string length
+        uint16_t length = *(uint16_t*)c;
+        c += sizeof(uint16_t);
+        if (c >= climit) {
+            if (length == 0) {
+                packet->mStringData.push_back("");
+                break;
+            }
+            parseError = true;
+            break;
+        }
+
+        // allocate string
+        char* cstr = (char*)malloc(length + 1);
+        if (!cstr) {
+            LOG_ERROR("Failed to allocate string");
+            parseError = true;
+            break;
+        }
+
+        // fill string
+        snprintf(cstr, length + 1, "%s", c);
+        c += length;
+
+        // remember string
+        packet->mStringData.push_back(cstr);
+        free(cstr);
+    }
+    if (c != climit) { parseError = true; }
+
+    // check impl settings
+    MPacketImplSettings impl = packet->GetImplSettings();
+    if (header.packetType != impl.packetType) {
+        LOG_ERROR("Received packet type mismatch: %u != %u", header.packetType, impl.packetType);
+        return;
+    }
+    if (packet->mStringData.size() != impl.stringCount) {
+        LOG_ERROR("Received packet string count mismatch: %lu != %u", packet->mStringData.size(), impl.stringCount);
+        return;
+    }
+    if (gServer && impl.sendType == MSEND_TYPE_SERVER) {
+        LOG_ERROR("Received server packet while being a server!");
+        return;
+    }
+    if (gClient && impl.sendType == MSEND_TYPE_CLIENT) {
+        LOG_ERROR("Received client packet while being a client!");
+        return;
+    }
+
+    // receive the packet
+    if (parseError) {
+        LOG_ERROR("Packet parse error!");
+    } else {
+        bool ret = packet->Receive(connection);
+        if (!ret) { LOG_ERROR("Packet receive error!"); }
+    }
 }
 
 void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, uint16_t aMaxDataSize) {
@@ -239,20 +225,8 @@ void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, 
             return;
         }
 
-        // queue up the packet to be processed
-        uint8_t* processData = (uint8_t*)malloc(totalSize);
-        if (processData) {
-            memcpy(processData, aData, totalSize);
-
-            std::lock_guard<std::mutex> guard(sPacketProcessMutex);
-            sPacketProcess.push_back({
-                .connection = connection,
-                .data = processData
-            });
-
-        } else {
-            LOG_ERROR("Could not allocate packet data to process");
-        }
+        // process
+        MPacket::Process(connection, aData);
 
         // shift the data array
         uint16_t j = 0;

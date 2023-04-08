@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include "mpacket.hpp"
 #include "lobby.hpp"
 
 class Lobby;
@@ -12,7 +13,8 @@ class Lobby;
 class Connection {
     private:
         std::string mAddressStr;
-        std::thread mThread;
+        uint8_t mData[MPACKET_MAX_SIZE] = { 0 };
+        uint16_t mDataSize = 0;
 
     public:
         bool mActive = false;
@@ -28,6 +30,3 @@ class Connection {
         void Disconnect();
         void Receive();
 };
-
-// callbacks
-extern void (*gOnConnectionDisconnected)(Connection* connection);

@@ -5,9 +5,6 @@
 
 Client* gClient = NULL;
 
-static void sUpdateStart(Client* client)  { client->Update(); }
-
-
 Client::~Client() {
     if (mConnection) {
         Disconnect();
@@ -46,18 +43,12 @@ bool Client::Begin(std::string aHost, uint32_t aPort)
 
     mConnection->Begin();
 
-    // start thread
-    mThreadUpdate = std::thread(sUpdateStart, this);
-    mThreadUpdate.detach();
-
     return true;
 }
 
 void Client::Update() {
-    // TODO: make this non-threaded
-    while (mConnection && mConnection->mActive) {
-        MPacket::Process();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    if (mConnection) {
+        mConnection->Receive();
     }
 }
 

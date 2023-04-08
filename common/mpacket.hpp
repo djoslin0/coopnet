@@ -2,10 +2,13 @@
 
 #include <cstdint>
 #include <vector>
-#include "connection.hpp"
 
 #define MPACKET_PROTOCOL_VERSION 1
 #define MPACKET_MAX_SIZE ((size_t)5100)
+
+// forward declarations
+class Connection;
+class Lobby;
 
 enum MPacketType {
     MPACKET_NONE,
@@ -118,7 +121,7 @@ class MPacket {
         void Send(Connection& connection);
         void Send(Lobby& lobby);
         static void Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, uint16_t aMaxDataSize);
-        static void Process();
+        static void Process(Connection* connection, uint8_t* aData);
         virtual bool Receive(Connection* connection) { return false; };
         virtual MPacketImplSettings GetImplSettings() { return {
             .packetType = MPACKET_NONE,

@@ -10,7 +10,16 @@
 #define PORT 8888
 #define EXIT_FAILURE 1
 
+std::thread sThreadRecv;
+
 static void sOnDisconnected(void) { exit(0); }
+
+static void sReceive(void) {
+    while (coopnet_is_connected()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        coopnet_update();
+    }
+}
 
 int main(int argc, char const *argv[]) {
     // setup callbacks
@@ -20,6 +29,9 @@ int main(int argc, char const *argv[]) {
         LOG_ERROR("Failed to begin client");
         exit(EXIT_FAILURE);
     }
+
+    sThreadRecv = std::thread(sReceive);
+    sThreadRecv.detach();
 
     while (true) {
         std::string input;
@@ -62,8 +74,12 @@ int main(int argc, char const *argv[]) {
                 coopnet_send((const uint8_t*)words[1].c_str(), words[1].length() + 1);
             }
         } else if (words[0] == "connect") {
+            gCoopNetCallbacks.OnDisconnected = sOnDisconnected;
             coopnet_begin(HOST, PORT);
+            sThreadRecv = std::thread(sReceive);
+            sThreadRecv.detach();
         } else if (words[0] == "disconnect") {
+            gCoopNetCallbacks.OnDisconnected = nullptr;
             coopnet_shutdown();
         }
 

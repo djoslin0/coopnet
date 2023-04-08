@@ -15,6 +15,7 @@ typedef struct {
 
 extern CoopNetCallbacks gCoopNetCallbacks;
 
+bool coopnet_is_connected(void);
 CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort);
 CoopNetRc coopnet_shutdown(void);
 CoopNetRc coopnet_update(void);

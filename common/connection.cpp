@@ -3,33 +3,28 @@
 #include <thread>
 #include <set>
 #include <unistd.h>
+#include <fcntl.h>
 
-#include "coopnet.h"
 #include "connection.hpp"
+#include "coopnet.h"
 #include "logging.hpp"
 #include "mpacket.hpp"
 
-// callbacks
-void (*gOnConnectionDisconnected)(Connection* connection) = nullptr;
-
 std::set<Connection*> sAllConnections;
 std::mutex sAllConnectionsMutex;
-
-static void ReceiveStart(Connection* connection) {
-    connection->Receive();
-}
 
 Connection::Connection(uint64_t id) {
     mId = id;
 
     std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
     sAllConnections.insert(this);
+    LOG_INFO("Connections (added): %lu", sAllConnections.size());
 }
 
 Connection::~Connection() {
     std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
     sAllConnections.erase(this);
-    LOG_INFO("Connections: %lu", sAllConnections.size());
+    LOG_INFO("Connections (removed): %lu", sAllConnections.size());
 }
 
 bool Connection::IsValid(Connection* connection) {
@@ -40,9 +35,9 @@ void Connection::Begin() {
     // store info
     mActive = true;
 
-    // set timeout
-    struct timeval tv = { 1, 0 };
-    setsockopt(mSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+    // set socket to non-blocking mode
+    int flags = fcntl(mSocket, F_GETFL, 0);
+    fcntl(mSocket, F_SETFL, flags | O_NONBLOCK);
 
     // convert address
     char asciiAddress[256] = { 0 };
@@ -50,63 +45,52 @@ void Connection::Begin() {
     mAddressStr = asciiAddress;
 
     LOG_INFO("[%lu] Connection accepted: %s", mId, mAddressStr.c_str());
-
-    // create thread
-    mThread = std::thread(ReceiveStart, this);
-    mThread.detach();
 }
 
 void Connection::Disconnect() {
     if (!mActive) { return; }
+
+    if (mLobby) {
+        mLobby->Leave(this);
+    }
+
     mActive = false;
     close(mSocket);
-}
 
-void Connection::Receive() {
-    uint8_t data[MPACKET_MAX_SIZE] = { 0 };
-    uint16_t dataSize = 0;
-
-    LOG_INFO("[%lu] Thread started", mId);
-
-    while (mActive) {
-        // receive from socket
-        socklen_t len = sizeof(struct sockaddr_in);
-        int ret = recvfrom(mSocket, &data[dataSize], MPACKET_MAX_SIZE - dataSize, 0, (struct sockaddr *) &mAddress, &len);
-        int rc = errno;
-
-        // make sure connection is still active
-        if (!mActive) { break; }
-
-        // check for error
-        if (ret == -1 && (rc == EAGAIN || rc == EWOULDBLOCK)) {
-            //LOG_INFO("[%lu] continue", mId);
-            continue;
-        } else if (ret == 0 || (rc ==  ECONNRESET)) {
-            LOG_INFO("[%lu] Connection closed (%d, %d).", mId, ret, rc);
-            break;
-        } else if (ret < 0) {
-            LOG_ERROR("[%lu] Error receiving data (%d)!", mId, rc);
-            break;
-        }
-
-        /*LOG_INFO("[%lu] Received data:", mId);
-        for (size_t i = 0; i < (size_t)ret; i++) {
-            printf("  %02X", data[i]);
-        }
-        printf("\n");*/
-
-        dataSize += ret;
-        MPacket::Read(this, data, &dataSize, MPACKET_MAX_SIZE);
-    }
-
-    // inactivate
-    mActive = false;
-
-    // run callback
-    if (gOnConnectionDisconnected) {
-        gOnConnectionDisconnected(this);
-    }
     if (gCoopNetCallbacks.OnDisconnected) {
         gCoopNetCallbacks.OnDisconnected();
     }
+}
+
+void Connection::Receive() {
+    // receive from socket
+    socklen_t len = sizeof(struct sockaddr_in);
+    int ret = recvfrom(mSocket, &mData[mDataSize], MPACKET_MAX_SIZE - mDataSize, MSG_DONTWAIT, (struct sockaddr *) &mAddress, &len);
+    int rc = errno;
+
+    // make sure connection is still active
+    if (!mActive) { return; }
+
+    // check for error
+    if (ret == -1 && (rc == EAGAIN || rc == EWOULDBLOCK)) {
+        //LOG_INFO("[%lu] continue", mId);
+        return;
+    } else if (ret == 0 || (rc ==  ECONNRESET)) {
+        LOG_INFO("[%lu] Connection closed (%d, %d).", mId, ret, rc);
+        Disconnect();
+        return;
+    } else if (ret < 0) {
+        LOG_ERROR("[%lu] Error receiving data (%d)!", mId, rc);
+        Disconnect();
+        return;
+    }
+
+    /*LOG_INFO("[%lu] Received data:", mId);
+    for (size_t i = 0; i < (size_t)ret; i++) {
+        printf("  %02X", data[i]);
+    }
+    printf("\n");*/
+
+    mDataSize += ret;
+    MPacket::Read(this, mData, &mDataSize, MPACKET_MAX_SIZE);
 }

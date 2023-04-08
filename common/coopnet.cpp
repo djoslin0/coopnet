@@ -5,6 +5,10 @@ extern "C" {
 
 CoopNetCallbacks gCoopNetCallbacks = { 0 };
 
+bool coopnet_is_connected(void) {
+    return (gClient && gClient->mConnection && gClient->mConnection->mActive);
+}
+
 CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort) {
     if (gClient) { return COOPNET_OK; }
 
