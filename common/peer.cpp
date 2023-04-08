@@ -5,6 +5,7 @@
 #include "client.hpp"
 #include "mpacket.hpp"
 #include "logging.hpp"
+#include "types.hpp"
 #include <unistd.h> // for sleep
 
 static void sOnStateChanged(juice_agent_t *agent, juice_state_t state, void *user_ptr) { ((Peer*)user_ptr)->OnStateChanged(state); }
@@ -12,7 +13,7 @@ static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) 
 static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { ((Peer*)user_ptr)->OnGatheringDone(); }
 static void sOnRecv(juice_agent_t *agent, const char *data, size_t size, void *user_ptr) { ((Peer*)user_ptr)->OnRecv(data, size); }
 
-Peer::Peer(uint64_t aId) {
+Peer::Peer(Client* client, uint64_t aId) {
     mId = aId;
 
     juice_set_log_level(JUICE_LOG_LEVEL_WARN);
@@ -22,18 +23,26 @@ Peer::Peer(uint64_t aId) {
     memset(&config, 0, sizeof(config));
 
     // STUN server example
-    config.stun_server_host = "stun.l.google.com";
-    config.stun_server_port = 19302;
+    config.stun_server_host = client->mStunServer.host.c_str();
+    config.stun_server_port = client->mStunServer.port;
 
     // TURN server example (use your own server in production)
-    juice_turn_server_t turn_server;
-    memset(&turn_server, 0, sizeof(turn_server));
-    turn_server.host = "openrelay.metered.ca";
-    turn_server.port = 80;
-    turn_server.username = "openrelayproject";
-    turn_server.password = "openrelayproject";
-    config.turn_servers = &turn_server;
-    config.turn_servers_count = 1;
+    mTurnServers = (juice_turn_server_t*)calloc(client->mTurnServers.size(), sizeof(juice_turn_server_t));
+    if (!mTurnServers) {
+        config.turn_servers = nullptr;
+        config.turn_servers_count = 0;
+        LOG_ERROR("Failed to allocate turn servers");
+    } else {
+        for (uint32_t i = 0; i < client->mTurnServers.size(); i++) {
+            StunTurnServer* turn = &client->mTurnServers[i];
+            mTurnServers[i].host = turn->host.c_str();
+            mTurnServers[i].port = turn->port;
+            mTurnServers[i].username = turn->username.c_str();
+            mTurnServers[i].password = turn->password.c_str();
+        }
+        config.turn_servers = mTurnServers;
+        config.turn_servers_count = client->mTurnServers.size();
+    }
 
 	config.local_port_range_begin = 60000;
 	config.local_port_range_end = 61000;
@@ -83,6 +92,7 @@ void Peer::Disconnect() {
     if (mAgent) {
 	    juice_destroy(mAgent);
         mAgent = nullptr;
+        mTurnServers = nullptr;
     }
 }
 

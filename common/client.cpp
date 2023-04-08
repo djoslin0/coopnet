@@ -10,6 +10,10 @@ bool Client::Begin(uint32_t aPort)
 {
     mConnection = new Connection(0);
 
+    // setup default stun server
+    mStunServer.host = "stun.l.google.com";
+    mStunServer.port = 19302;
+
     // setup a socket
     mConnection->mSocket = socket(AF_INET, SOCK_STREAM, 0);
     if(mConnection->mSocket == 0)
@@ -46,7 +50,7 @@ void Client::Update() {
 }
 
 void Client::PeerBegin(uint64_t userId) {
-    mPeers[userId] = new Peer(userId);
+    mPeers[userId] = new Peer(this, userId);
     LOG_INFO("Peer begin, count: %lu", mPeers.size());
 }
 

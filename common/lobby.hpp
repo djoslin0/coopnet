@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include "connection.hpp"
+#include "types.hpp"
 
 class Connection;
 
@@ -26,7 +27,7 @@ class Lobby {
         Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections);
         ~Lobby();
 
-        bool Join(Connection* aConnection);
+        enum MPacketErrorNumber Join(Connection* aConnection);
         void Leave(Connection* aConnection);
 };
 

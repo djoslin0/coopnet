@@ -20,6 +20,8 @@ enum MPacketType {
     MPACKET_LOBBY_LIST_GOT,
     MPACKET_PEER_SDP,
     MPACKET_PEER_CANDIDATE,
+    MPACKET_STUN_TURN,
+    MPACKET_ERROR,
     MPACKET_MAX,
 };
 
@@ -87,6 +89,15 @@ typedef struct {
     uint64_t lobbyId;
     uint64_t userId;
 } MPacketPeerCandidateData;
+
+typedef struct {
+    uint8_t isStun;
+    uint16_t port;
+} MPacketStunTurnData;
+
+typedef struct {
+    uint16_t errorNumber;
+} MPacketErrorData;
 
 #pragma pack()
 
@@ -259,6 +270,28 @@ class MPacketPeerCandidate : public MPacketImpl<MPacketPeerCandidateData> {
             .packetType = MPACKET_PEER_CANDIDATE,
             .stringCount = 1,
             .sendType = MSEND_TYPE_BOTH
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketStunTurn : public MPacketImpl<MPacketStunTurnData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_STUN_TURN,
+            .stringCount = 3,
+            .sendType = MSEND_TYPE_SERVER
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketError : public MPacketImpl<MPacketErrorData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_ERROR,
+            .stringCount = 0,
+            .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
 };

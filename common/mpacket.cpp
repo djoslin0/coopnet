@@ -8,6 +8,7 @@
 #include "logging.hpp"
 #include "server.hpp"
 #include "client.hpp"
+#include "types.hpp"
 
 static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacket(),
@@ -22,6 +23,8 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketLobbyListGot(),
     new MPacketPeerSdp(),
     new MPacketPeerCandidate(),
+    new MPacketStunTurn(),
+    new MPacketError(),
 };
 
 struct MPacketProccess {
@@ -136,6 +139,12 @@ void MPacket::Process() {
         void* stringData = &it.data[sizeof(MPacketHeader) + header.dataSize];
         bool parseError = false;
 
+        /*LOG_INFO("Processing data:");
+        for (size_t i = 0; i < (size_t)(sizeof(MPacketHeader) + header.dataSize + header.stringSize); i++) {
+            printf("  %02X", ((uint8_t*)it.data)[i]);
+        }
+        printf("\n");*/
+
         // sanity check packet type
         if (header.packetType >= MPACKET_MAX || header.packetType == MPACKET_NONE) {
             LOG_ERROR("Received an unknown packet type: %u, data size: %u, string size: %u", header.packetType, header.dataSize, header.stringSize);
@@ -162,7 +171,14 @@ void MPacket::Process() {
             // retrieve string length
             uint16_t length = *(uint16_t*)c;
             c += sizeof(uint16_t);
-            if (c >= climit) { parseError = true; break; }
+            if (c >= climit) {
+                if (length == 0) {
+                    packet->mStringData.push_back("");
+                    break;
+                }
+                parseError = true;
+                break;
+            }
 
             // allocate string
             char* cstr = (char*)malloc(length + 1);
@@ -189,7 +205,7 @@ void MPacket::Process() {
             continue;
         }
         if (packet->mStringData.size() != impl.stringCount) {
-            LOG_ERROR("Received packet string count mismatch!");
+            LOG_ERROR("Received packet string count mismatch: %lu != %u", packet->mStringData.size(), impl.stringCount);
             continue;
         }
         if (gServer && impl.sendType == MSEND_TYPE_SERVER) {
@@ -284,10 +300,15 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_JOIN received: lobbId %lu", mData.lobbyId);
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
-    if (lobby && lobby->Join(connection)) {
-        // TODO: wat do
-    } else {
-        // TODO: send out error packet
+    if (!lobby) {
+        MPacketError({ .errorNumber = MERR_LOBBY_NOT_FOUND }).Send(*connection);
+        return false;
+    }
+
+    enum MPacketErrorNumber rc = lobby->Join(connection);
+    if (rc != MERR_NONE) {
+        MPacketError({ .errorNumber = (uint16_t)rc }).Send(*connection);
+        return false;
     }
 
     return true;
@@ -295,12 +316,14 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 
 bool MPacketLobbyJoined::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %lu, userId %lu", mData.lobbyId, mData.userId);
+
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = mData.lobbyId;
     } else if (mData.lobbyId == gClient->mCurrentLobbyId) {
         gClient->PeerBegin(mData.userId);
     } else {
-        // TODO: wat do
+        LOG_ERROR("Received 'joined' for the wrong lobby");
+        return false;
     }
 
     return true;
@@ -310,27 +333,26 @@ bool MPacketLobbyLeave::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_LEAVE received: lobbyId %lu", mData.lobbyId);
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
-    if (lobby) {
-        lobby->Leave(connection);
-    } else {
-        // TODO: send out error packet
+    if (!lobby) {
+        MPacketError({ .errorNumber = MERR_LOBBY_NOT_FOUND }).Send(*connection);
+        return false;
     }
+
+    lobby->Leave(connection);
 
     return true;
 }
 
 bool MPacketLobbyLeft::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_LEFT received: lobbyId %lu, userId %lu", mData.lobbyId, mData.userId);
-    if (mData.lobbyId != gClient->mCurrentLobbyId) {
-        return false;
-    }
+
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = 0;
         gClient->PeerEndAll();
     } else if (mData.lobbyId == gClient->mCurrentLobbyId) {
         gClient->PeerEnd(mData.userId);
     } else {
-        // TODO: wat do
+        LOG_ERROR("Received 'left' for the wrong lobby");
     }
     return true;
 }
@@ -355,6 +377,7 @@ bool MPacketPeerSdp::Receive(Connection *connection) {
     LOG_INFO("MPACKET_PEER_SDP received: lobbyId %lu, userId %lu, sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
     if (gServer) {
         Connection* other = gServer->ConnectionGet(mData.userId);
+
         if (!other) {
             LOG_ERROR("Could not find user: %lu", mData.userId);
             return false;
@@ -364,20 +387,22 @@ bool MPacketPeerSdp::Receive(Connection *connection) {
            .lobbyId = mData.lobbyId,
            .userId = connection->mId
         }, mStringData).Send(*other);
+
         return true;
     }
 
     if (gClient) {
         Peer* peer = gClient->PeerGet(mData.userId);
+
         if (!peer) {
             LOG_ERROR("Could not find peer: %lu", mData.userId);
             return false;
         }
+
         peer->Connect(sdp.c_str());
         return true;
     }
 
-    // TODO: how to handle this scenario?
     LOG_ERROR("Received peer sdp without being server or client");
     return false;
 }
@@ -387,6 +412,7 @@ bool MPacketPeerCandidate::Receive(Connection *connection) {
     LOG_INFO("MPACKET_PEER_CANDIDATE received: lobbyId %lu, userId %lu, sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
     if (gServer) {
         Connection* other = gServer->ConnectionGet(mData.userId);
+
         if (!other) {
             LOG_ERROR("Could not find user: %lu", mData.userId);
             return false;
@@ -396,20 +422,48 @@ bool MPacketPeerCandidate::Receive(Connection *connection) {
            .lobbyId = mData.lobbyId,
            .userId = connection->mId
         }, mStringData).Send(*other);
+
         return true;
     }
 
     if (gClient) {
         Peer* peer = gClient->PeerGet(mData.userId);
+
         if (!peer) {
             LOG_ERROR("Could not find peer: %lu", mData.userId);
             return false;
         }
+
         peer->CandidateAdd(sdp.c_str());
         return true;
     }
 
-    // TODO: how to handle this scenario?
     LOG_ERROR("Received peer sdp without being server or client");
     return false;
+}
+
+bool MPacketStunTurn::Receive(Connection* connection) {
+    std::string& host = mStringData[0];
+    std::string& username = mStringData[1];
+    std::string& password = mStringData[2];
+    LOG_INFO("MPACKET_STUN_TURN received: isStun %u, host '%s', port %u, username '%s', password '%s'", mData.isStun, host.c_str(), mData.port, username.c_str(), password.c_str());
+
+    if (mData.isStun) {
+        gClient->mStunServer.host = host;
+        gClient->mStunServer.port = mData.port;
+    } else {
+        gClient->mTurnServers.push_back({
+            .host = host,
+            .username = username,
+            .password = password,
+            .port = mData.port,
+        });
+    }
+
+    return true;
+}
+
+bool MPacketError::Receive(Connection* connection) {
+    LOG_INFO("MPACKET_ERROR received: errno %u", mData.errorNumber);
+    return true;
 }

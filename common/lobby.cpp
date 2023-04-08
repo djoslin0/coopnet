@@ -5,7 +5,7 @@
 
 #include "lobby.hpp"
 #include "logging.hpp"
-#include "mpacket.hpp"
+#include "types.hpp"
 
 // callbacks
 void (*gOnLobbyJoin)(Lobby* lobby, Connection* connection) = nullptr;
@@ -31,10 +31,10 @@ Lobby::~Lobby() {
     if (gOnLobbyDestroy) { gOnLobbyDestroy(this); }
 }
 
-bool Lobby::Join(Connection* aConnection) {
+enum MPacketErrorNumber Lobby::Join(Connection* aConnection) {
     // sanity check
-    if (!aConnection) { return false; }
-    if (aConnection->mLobby == this) { return false; }
+    if (!aConnection) { return MERR_LOBBY_JOIN_FAILED; }
+    if (aConnection->mLobby == this) { return MERR_LOBBY_JOIN_FAILED; }
 
     // leave older lobby
     if (aConnection->mLobby != nullptr) {
@@ -43,7 +43,7 @@ bool Lobby::Join(Connection* aConnection) {
 
     // find out if we're already in this
     if (mConnections.size() >= mMaxConnections) {
-        return false;
+        return MERR_LOBBY_JOIN_FULL;
     }
 
     auto it = std::find(mConnections.begin(), mConnections.end(), aConnection);
@@ -53,7 +53,7 @@ bool Lobby::Join(Connection* aConnection) {
     aConnection->mLobby = this;
 
     if (gOnLobbyJoin) { gOnLobbyJoin(this, aConnection); }
-    return true;
+    return MERR_NONE;
 }
 
 void Lobby::Leave(Connection* aConnection) {

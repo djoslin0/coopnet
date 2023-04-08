@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "connection.hpp"
 #include "peer.hpp"
+#include "types.hpp"
 
 class Client {
     private:
@@ -13,6 +14,9 @@ class Client {
         uint64_t mCurrentUserId = 0;
         uint64_t mCurrentLobbyId = 0;
         Connection* mConnection = nullptr;
+
+        StunTurnServer mStunServer;
+        std::vector<StunTurnServer> mTurnServers;
 
         bool Begin(uint32_t aPort);
         void Update();

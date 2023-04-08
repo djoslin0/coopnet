@@ -8,8 +8,25 @@
 #include "server.hpp"
 #include "connection.hpp"
 #include "mpacket.hpp"
+#include "types.hpp"
 
 Server* gServer = NULL;
+
+StunTurnServer sStunServer = {
+    .host = "stun.l.google.com",
+	.username = "",
+	.password = "",
+    .port = 19302,
+};
+
+StunTurnServer sTurnServers[] = {
+    {
+        .host = "openrelay.metered.ca",
+        .username = "openrelayproject",
+        .password = "openrelayproject",
+        .port = 80,
+    },
+};
 
 static void sOnConnectionDisconnected(Connection* connection) { gServer->OnConnectionDisconnect(connection); }
 static void sOnLobbyJoin(Lobby* lobby, Connection* connection) { gServer->OnLobbyJoin(lobby, connection); }
@@ -94,6 +111,22 @@ void Server::Receive() {
             .userId = connection->mId,
             .version = MPACKET_PROTOCOL_VERSION
         }).Send(*connection);
+
+        // send stun server
+        MPacketStunTurn(
+            { .isStun = true, .port = sStunServer.port },
+            { sStunServer.host, sStunServer.username, sStunServer.password }
+        ).Send(*connection);
+
+        // send turn servers
+        uint32_t turnServerCount = sizeof(sTurnServers) / sizeof(sTurnServers[0]);
+        for (uint32_t i = 0; i < turnServerCount; i++) {
+            StunTurnServer* turn = &sTurnServers[i];
+            MPacketStunTurn(
+                { .isStun = false, .port = turn->port },
+                { turn->host, turn->username, turn->password }
+            ).Send(*connection);
+        }
 
         // remember connection
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
