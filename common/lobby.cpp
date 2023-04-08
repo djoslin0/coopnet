@@ -5,7 +5,7 @@
 
 #include "lobby.hpp"
 #include "logging.hpp"
-#include "types.hpp"
+#include "utils.hpp"
 
 // callbacks
 void (*gOnLobbyJoin)(Lobby* lobby, Connection* connection) = nullptr;

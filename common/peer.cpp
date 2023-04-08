@@ -1,12 +1,13 @@
 #include <map>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h> // for sleep
+#include "coopnet.h"
 #include "peer.hpp"
 #include "client.hpp"
 #include "mpacket.hpp"
 #include "logging.hpp"
-#include "types.hpp"
-#include <unistd.h> // for sleep
+#include "utils.hpp"
 
 static void sOnStateChanged(juice_agent_t *agent, juice_state_t state, void *user_ptr) { ((Peer*)user_ptr)->OnStateChanged(state); }
 static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { ((Peer*)user_ptr)->OnCandidate(sdp); }
@@ -15,6 +16,8 @@ static void sOnRecv(juice_agent_t *agent, const char *data, size_t size, void *u
 
 Peer::Peer(Client* client, uint64_t aId) {
     mId = aId;
+    mLastState = JUICE_STATE_DISCONNECTED;
+    mCurrentState = JUICE_STATE_DISCONNECTED;
 
     juice_set_log_level(JUICE_LOG_LEVEL_WARN);
 
@@ -53,6 +56,7 @@ Peer::Peer(Client* client, uint64_t aId) {
     config.cb_recv = sOnRecv;
     config.user_ptr = this;
 
+    mConnected = false;
     mAgent = juice_create(&config);
 
     // Send if it is an ICE controller
@@ -77,14 +81,15 @@ void Peer::SendSdp() {
     MPacketPeerSdp(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
         { mSdp }
-        ).Send(*gClient->mConnection);
+    ).Send(*gClient->mConnection);
 
     juice_gather_candidates(mAgent);
 }
 
-void Peer::Send(const uint8_t* aData, size_t aDataLength) {
+bool Peer::Send(const uint8_t* aData, size_t aDataLength) {
     LOG_INFO("Peer sending to (%lu)\n", mId);
     juice_send(mAgent, (const char*)aData, aDataLength);
+    return true;
 }
 
 void Peer::Disconnect() {
@@ -103,38 +108,26 @@ void Peer::CandidateAdd(const char* aSdp) {
 void Peer::OnStateChanged(juice_state_t aState) {
     LOG_INFO("State change (%lu): %s", mId, juice_state_to_string(aState));
 
-    if (aState == JUICE_STATE_CONNECTED) {
-        // Agent 1: on connected, send a message
-        char message[256];
-        snprintf(message, 255, "Hello from %lu", gClient->mCurrentUserId);
-        juice_send(mAgent, message, strlen(message)+1);
+    bool wasConnected = (mLastState == JUICE_STATE_CONNECTED) || (mLastState == JUICE_STATE_COMPLETED);
+    bool wasDisconnected = (mLastState == JUICE_STATE_DISCONNECTED) || (mLastState == JUICE_STATE_FAILED);
+
+    mConnected = (aState == JUICE_STATE_CONNECTED) || (aState == JUICE_STATE_COMPLETED);
+    bool isDisconnected = (aState == JUICE_STATE_DISCONNECTED) || (aState == JUICE_STATE_FAILED);
+
+    if (!wasConnected && mConnected) {
+        if (gCoopNetCallbacks.OnPeerConnected) {
+            gCoopNetCallbacks.OnPeerConnected(mId);
+        }
     }
 
-    /////////////////////////
-
-	bool success = (aState == JUICE_STATE_COMPLETED);
-
-    // Retrieve candidates
-    char local[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
-    char remote[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
-    if (success &=
-        (juice_get_selected_candidates(mAgent, local, JUICE_MAX_CANDIDATE_SDP_STRING_LEN, remote,
-                                       JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0)) {
-        printf("Local candidate  1: %s\n", local);
-        printf("Remote candidate 1: %s\n", remote);
-        if ((!strstr(local, "typ host") && !strstr(local, "typ prflx")) ||
-            (!strstr(remote, "typ host") && !strstr(remote, "typ prflx")))
-            success = false; // local connection should be possible
+    if (!wasDisconnected && isDisconnected) {
+        if (gCoopNetCallbacks.OnPeerDisconnected) {
+            gCoopNetCallbacks.OnPeerDisconnected(mId);
+        }
     }
 
-    // Retrieve addresses
-    char localAddr[JUICE_MAX_ADDRESS_STRING_LEN];
-    char remoteAddr[JUICE_MAX_ADDRESS_STRING_LEN];
-    if (success &= (juice_get_selected_addresses(mAgent, localAddr, JUICE_MAX_ADDRESS_STRING_LEN,
-                                                 remoteAddr, JUICE_MAX_ADDRESS_STRING_LEN) == 0)) {
-        printf("Local address  1: %s\n", localAddr);
-        printf("Remote address 1: %s\n", remoteAddr);
-    }
+    mLastState = mCurrentState;
+    mCurrentState = aState;
 }
 
 void Peer::OnCandidate(const char* aSdp) {
@@ -143,8 +136,7 @@ void Peer::OnCandidate(const char* aSdp) {
     MPacketPeerCandidate(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
         { aSdp }
-        ).Send(*gClient->mConnection);
-
+    ).Send(*gClient->mConnection);
 }
 
 void Peer::OnGatheringDone() {
@@ -153,4 +145,8 @@ void Peer::OnGatheringDone() {
 
 void Peer::OnRecv(const char* aData, size_t aSize) {
     LOG_INFO("Recv (%lu), size %lu: %s", mId, aSize, aData);
+
+    if (gCoopNetCallbacks.OnReceive) {
+        gCoopNetCallbacks.OnReceive(mId, (const uint8_t*)aData, aSize);
+    }
 }

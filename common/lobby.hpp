@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include "connection.hpp"
-#include "types.hpp"
+#include "utils.hpp"
 
 class Connection;
 

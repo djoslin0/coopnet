@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "connection.hpp"
 #include "peer.hpp"
-#include "types.hpp"
+#include "utils.hpp"
 
 class Client {
     private:

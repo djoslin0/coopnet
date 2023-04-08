@@ -91,20 +91,21 @@ Peer* Client::PeerGet(uint64_t userId) {
 }
 
 bool Client::PeerSend(const uint8_t* aData, size_t aDataLength) {
+    bool ret = true;
     for (auto& it : mPeers) {
         Peer* peer = it.second;
-        if (peer) {
-            peer->Send(aData, aDataLength);
+        if (!peer) { continue; }
+        if (!peer->Send(aData, aDataLength)) {
+            ret = false;
         }
     }
-    return (mPeers.size() > 0);
+    return ret && (mPeers.size() > 0);
 }
 
 bool Client::PeerSendTo(uint64_t aPeerId, const uint8_t* aData, size_t aDataLength) {
     Peer* peer = mPeers[aPeerId];
     if (!peer) { return false; }
-    peer->Send(aData, aDataLength);
-    return true;
+    return peer->Send(aData, aDataLength);
 }
 
 void Client::LobbyCreate(std::string aGame, std::string aVersion, std::string aTitle, uint16_t aMaxConnections) {

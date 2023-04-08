@@ -4,11 +4,12 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <errno.h>
+#include "coopnet.h"
 #include "mpacket.hpp"
 #include "logging.hpp"
 #include "server.hpp"
 #include "client.hpp"
-#include "types.hpp"
+#include "utils.hpp"
 
 static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacket(),
@@ -245,7 +246,13 @@ bool MPacketJoined::Receive(Connection* connection) {
         gClient->Disconnect();
         return false;
     }
+
     gClient->mCurrentUserId = mData.userId;
+
+    if (gCoopNetCallbacks.OnConnected) {
+        gCoopNetCallbacks.OnConnected(mData.userId);
+    }
+
     return true;
 }
 
@@ -265,7 +272,11 @@ bool MPacketLobbyCreated::Receive(Connection* connection) {
     std::string& version = mStringData[1];
     std::string& title = mStringData[2];
 
-    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %lu, game '%s', version '%s', title '%s'", mData.lobbyId, game.c_str(), version.c_str(), title.c_str());
+    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %lu, game '%s', version '%s', title '%s', maxConnections %lu", mData.lobbyId, game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
+
+    if (gCoopNetCallbacks.OnLobbyCreated) {
+        gCoopNetCallbacks.OnLobbyCreated(mData.lobbyId, game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
+    }
 
     return true;
 }
@@ -300,6 +311,10 @@ bool MPacketLobbyJoined::Receive(Connection* connection) {
         return false;
     }
 
+    if (gCoopNetCallbacks.OnLobbyJoined) {
+        gCoopNetCallbacks.OnLobbyJoined(mData.lobbyId, mData.userId);
+    }
+
     return true;
 }
 
@@ -328,6 +343,11 @@ bool MPacketLobbyLeft::Receive(Connection* connection) {
     } else {
         LOG_ERROR("Received 'left' for the wrong lobby");
     }
+
+    if (gCoopNetCallbacks.OnLobbyLeft) {
+        gCoopNetCallbacks.OnLobbyLeft(mData.lobbyId, mData.userId);
+    }
+
     return true;
 }
 
@@ -343,6 +363,11 @@ bool MPacketLobbyListGot::Receive(Connection* connection) {
     std::string& version = mStringData[1];
     std::string& title = mStringData[2];
     LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %lu, ownerId %lu, connections %u/%u, game '%s', version '%s', title '%s'", mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
+
+    if (gCoopNetCallbacks.OnLobbyListGot) {
+        gCoopNetCallbacks.OnLobbyListGot(mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
+    }
+
     return true;
 }
 
@@ -439,5 +464,8 @@ bool MPacketStunTurn::Receive(Connection* connection) {
 
 bool MPacketError::Receive(Connection* connection) {
     LOG_INFO("MPACKET_ERROR received: errno %u", mData.errorNumber);
+    if (gCoopNetCallbacks.OnError) {
+        gCoopNetCallbacks.OnError((enum MPacketErrorNumber)mData.errorNumber);
+    }
     return true;
 }

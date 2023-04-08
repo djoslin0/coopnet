@@ -10,6 +10,9 @@ class Peer {
         uint64_t mId;
         juice_agent_t* mAgent = nullptr;
         juice_turn_server_t* mTurnServers = nullptr;
+        bool mConnected = false;
+        juice_state_t mCurrentState = JUICE_STATE_DISCONNECTED;
+        juice_state_t mLastState = JUICE_STATE_DISCONNECTED;
 
         void SendSdp();
 
@@ -21,7 +24,7 @@ class Peer {
         void Connect(const char* aSdp);
         void Disconnect();
         void CandidateAdd(const char* aSdp);
-        void Send(const uint8_t* aData, size_t aDataLength);
+        bool Send(const uint8_t* aData, size_t aDataLength);
 
         void OnStateChanged(juice_state_t aState);
         void OnCandidate(const char* aSdp);

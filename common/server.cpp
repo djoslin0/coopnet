@@ -8,7 +8,7 @@
 #include "server.hpp"
 #include "connection.hpp"
 #include "mpacket.hpp"
-#include "types.hpp"
+#include "utils.hpp"
 
 Server* gServer = NULL;
 
@@ -223,7 +223,8 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
 
     // notify of lobby creation
     MPacketLobbyCreated({
-        .lobbyId = lobby->mId
+        .lobbyId = lobby->mId,
+        .maxConnections = aMaxConnections,
     }, {
         lobby->mGame,
         lobby->mVersion,

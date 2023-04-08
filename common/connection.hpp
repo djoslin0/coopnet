@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include "coopnet.h"
 #include "mpacket.hpp"
 #include "lobby.hpp"
 

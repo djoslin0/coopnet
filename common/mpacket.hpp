@@ -53,6 +53,7 @@ typedef struct {
 
 typedef struct {
     uint64_t lobbyId;
+    uint64_t maxConnections;
 } MPacketLobbyCreatedData;
 
 typedef struct {
