@@ -18,7 +18,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <fnctl.h>
+#include <fcntl.h>
 #include <netdb.h>
 
 #define SOCKET_LAST_ERROR errno
