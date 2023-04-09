@@ -128,7 +128,7 @@ void Server::Receive() {
         // remember connection
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
         mConnections[connection->mId] = connection;
-        LOG_INFO("[%llu] Connection added, count: %llu", connection->mId, mConnections.size());
+        LOG_INFO("[%" PRIu64 "] Connection added, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
     }
 }
 
@@ -142,7 +142,7 @@ void Server::Update() {
             // erase the connection if it's inactive, otherwise receive packets
             if (!connection->mActive) {
                 it = mConnections.erase(it);
-                LOG_INFO("[%llu] Connection removed, count: %llu", connection->mId, mConnections.size());
+                LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
                 delete connection;
             } else {
                 it->second->Receive();
@@ -207,7 +207,7 @@ void Server::OnLobbyLeave(Lobby* aLobby, Connection* aConnection) {
 
 void Server::OnLobbyDestroy(Lobby* aLobby) {
     mLobbies.erase(aLobby->mId);
-    LOG_INFO("[%llu] Lobby removed, count: %llu", aLobby->mId, mLobbies.size());
+    LOG_INFO("[%" PRIu64 "] Lobby removed, count: %" PRIu64 "", aLobby->mId, (uint64_t)mLobbies.size());
 }
 
 void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections) {
@@ -220,7 +220,7 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
     Lobby* lobby = new Lobby(aConnection, mNextLobbyId++, aGame, aVersion, aTitle, aMaxConnections);
     mLobbies[lobby->mId] = lobby;
 
-    LOG_INFO("[%llu] Lobby added, count: %llu", lobby->mId, mLobbies.size());
+    LOG_INFO("[%" PRIu64 "] Lobby added, count: %" PRIu64 "", lobby->mId, (uint64_t)mLobbies.size());
 
     // notify of lobby creation
     MPacketLobbyCreated({

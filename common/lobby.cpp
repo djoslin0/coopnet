@@ -22,7 +22,7 @@ Lobby::Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& 
 }
 
 Lobby::~Lobby() {
-    LOG_INFO("Destroying lobby %llu", mId);
+    LOG_INFO("Destroying lobby %" PRIu64 "", mId);
 
     for (auto& it : mConnections) {
         this->Leave(it);

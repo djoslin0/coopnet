@@ -1,9 +1,10 @@
 #pragma once
 
+#include <string>
+#include <cinttypes>
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
-#include <string>
 
 static void _debuglog_print_timestamp(void) {
     time_t ltime = time(NULL);

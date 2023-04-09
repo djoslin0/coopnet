@@ -51,7 +51,7 @@ void MPacket::Send(Connection& connection) {
     // figure out data size
     size_t dataSize = sizeof(MPacketHeader) + pHeader.dataSize + pHeader.stringSize;
     if (dataSize > MPACKET_MAX_SIZE) {
-        LOG_ERROR("Packet size exceeded max size (%llu > %llu)", dataSize, MPACKET_MAX_SIZE);
+        LOG_ERROR("Packet size exceeded max size (%" PRIu64 " > %" PRIu64 ")", (uint64_t)dataSize, (uint64_t)MPACKET_MAX_SIZE);
         return;
     }
 
@@ -109,7 +109,7 @@ void MPacket::Send(Connection& connection) {
 
     // check for data size error
     if (sent != dataSize) {
-        LOG_ERROR("Error sending data, did not send all bytes (%llu != %llu)!", sent, dataSize);
+        LOG_ERROR("Error sending data, did not send all bytes (%" PRIu64 " != %" PRIu64 ")!", (uint64_t)sent, (uint64_t)dataSize);
     }
 }
 
@@ -195,7 +195,7 @@ void MPacket::Process(Connection* connection, uint8_t* aData) {
         return;
     }
     if (packet->mStringData.size() != impl.stringCount) {
-        LOG_ERROR("Received packet string count mismatch: %llu != %u", packet->mStringData.size(), impl.stringCount);
+        LOG_ERROR("Received packet string count mismatch: %" PRIu64 " != %u", (uint64_t)packet->mStringData.size(), impl.stringCount);
         return;
     }
     if (gServer && impl.sendType == MSEND_TYPE_SERVER) {
@@ -241,7 +241,7 @@ void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, 
 }
 
 bool MPacketJoined::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_JOINED received: userID %llu, version %u", mData.userId, mData.version);
+    LOG_INFO("MPACKET_JOINED received: userID %" PRIu64 ", version %u", mData.userId, mData.version);
     if (mData.version != MPACKET_PROTOCOL_VERSION) {
         gClient->Disconnect();
         return false;
@@ -272,7 +272,7 @@ bool MPacketLobbyCreated::Receive(Connection* connection) {
     std::string& version = mStringData[1];
     std::string& title = mStringData[2];
 
-    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %llu, game '%s', version '%s', title '%s', maxConnections %llu", mData.lobbyId, game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
+    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %" PRIu64 ", game '%s', version '%s', title '%s', maxConnections %" PRIu64 "", mData.lobbyId, game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
 
     if (gCoopNetCallbacks.OnLobbyCreated) {
         gCoopNetCallbacks.OnLobbyCreated(mData.lobbyId, game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
@@ -282,7 +282,7 @@ bool MPacketLobbyCreated::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyJoin::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_JOIN received: lobbyId %llu", mData.lobbyId);
+    LOG_INFO("MPACKET_LOBBY_JOIN received: lobbyId %" PRIu64 "", mData.lobbyId);
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (!lobby) {
@@ -300,7 +300,7 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyJoined::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %llu, userId %llu, priority %u", mData.lobbyId, mData.userId, mData.priority);
+    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %" PRIu64 ", userId %" PRIu64 ", priority %u", mData.lobbyId, mData.userId, mData.priority);
 
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = mData.lobbyId;
@@ -320,7 +320,7 @@ bool MPacketLobbyJoined::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyLeave::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_LEAVE received: lobbyId %llu", mData.lobbyId);
+    LOG_INFO("MPACKET_LOBBY_LEAVE received: lobbyId %" PRIu64 "", mData.lobbyId);
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (!lobby) {
@@ -334,7 +334,7 @@ bool MPacketLobbyLeave::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyLeft::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_LEFT received: lobbyId %llu, userId %llu", mData.lobbyId, mData.userId);
+    LOG_INFO("MPACKET_LOBBY_LEFT received: lobbyId %" PRIu64 ", userId %" PRIu64 "", mData.lobbyId, mData.userId);
 
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = 0;
@@ -364,7 +364,7 @@ bool MPacketLobbyListGot::Receive(Connection* connection) {
     std::string& game = mStringData[0];
     std::string& version = mStringData[1];
     std::string& title = mStringData[2];
-    LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %llu, ownerId %llu, connections %u/%u, game '%s', version '%s', title '%s'", mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
+    LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %" PRIu64 ", ownerId %" PRIu64 ", connections %u/%u, game '%s', version '%s', title '%s'", mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
 
     if (gCoopNetCallbacks.OnLobbyListGot) {
         gCoopNetCallbacks.OnLobbyListGot(mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
@@ -375,12 +375,12 @@ bool MPacketLobbyListGot::Receive(Connection* connection) {
 
 bool MPacketPeerSdp::Receive(Connection *connection) {
     std::string& sdp = mStringData[0];
-    LOG_INFO("MPACKET_PEER_SDP received: lobbyId %llu, userId %llu, sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
+    LOG_INFO("MPACKET_PEER_SDP received: lobbyId %" PRIu64 ", userId %" PRIu64 ", sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
     if (gServer) {
         Connection* other = gServer->ConnectionGet(mData.userId);
 
         if (!other) {
-            LOG_ERROR("Could not find user: %llu", mData.userId);
+            LOG_ERROR("Could not find user: %" PRIu64 "", mData.userId);
             return false;
         }
 
@@ -396,7 +396,7 @@ bool MPacketPeerSdp::Receive(Connection *connection) {
         Peer* peer = gClient->PeerGet(mData.userId);
 
         if (!peer) {
-            LOG_ERROR("Could not find peer: %llu", mData.userId);
+            LOG_ERROR("Could not find peer: %" PRIu64 "", mData.userId);
             return false;
         }
 
@@ -410,12 +410,12 @@ bool MPacketPeerSdp::Receive(Connection *connection) {
 
 bool MPacketPeerCandidate::Receive(Connection *connection) {
     std::string& sdp = mStringData[0];
-    LOG_INFO("MPACKET_PEER_CANDIDATE received: lobbyId %llu, userId %llu, sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
+    LOG_INFO("MPACKET_PEER_CANDIDATE received: lobbyId %" PRIu64 ", userId %" PRIu64 ", sdp '%s'", mData.lobbyId, mData.userId, sdp.c_str());
     if (gServer) {
         Connection* other = gServer->ConnectionGet(mData.userId);
 
         if (!other) {
-            LOG_ERROR("Could not find user: %llu", mData.userId);
+            LOG_ERROR("Could not find user: %" PRIu64 "", mData.userId);
             return false;
         }
 
@@ -431,7 +431,7 @@ bool MPacketPeerCandidate::Receive(Connection *connection) {
         Peer* peer = gClient->PeerGet(mData.userId);
 
         if (!peer) {
-            LOG_ERROR("Could not find peer: %llu", mData.userId);
+            LOG_ERROR("Could not find peer: %" PRIu64 "", mData.userId);
             return false;
         }
 
@@ -444,7 +444,7 @@ bool MPacketPeerCandidate::Receive(Connection *connection) {
 }
 
 bool MPacketPeerFailed::Receive(Connection *connection) {
-    LOG_INFO("MPACKET_PEER_FAILED received: lobbyId %llu, peerId %llu", mData.lobbyId, mData.peerId);
+    LOG_INFO("MPACKET_PEER_FAILED received: lobbyId %" PRIu64 ", peerId %" PRIu64 "", mData.lobbyId, mData.peerId);
     // make sure client is still in this lobby
     if (!connection->mLobby || connection->mLobby->mId != mData.lobbyId) {
         LOG_ERROR("Peer failed, but the one that saw the failure is no longer in the lobby");

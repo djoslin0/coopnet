@@ -18,13 +18,13 @@ Connection::Connection(uint64_t id) {
 
     std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
     sAllConnections.insert(this);
-    LOG_INFO("Connections (added): %u", (uint32_t)sAllConnections.size());
+    LOG_INFO("Connections (added): %" PRIu64 "", (uint64_t)sAllConnections.size());
 }
 
 Connection::~Connection() {
     std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
     sAllConnections.erase(this);
-    LOG_INFO("Connections (removed): %u", (uint32_t)sAllConnections.size());
+    LOG_INFO("Connections (removed): %" PRIu64 "", (uint64_t)sAllConnections.size());
 }
 
 bool Connection::IsValid(Connection* connection) {
@@ -43,7 +43,7 @@ void Connection::Begin() {
     inet_ntop(AF_INET, &(mAddress.sin_addr), asciiAddress, sizeof(asciiAddress));
     mAddressStr = asciiAddress;
 
-    LOG_INFO("[%llu] Connection accepted: %s", mId, mAddressStr.c_str());
+    LOG_INFO("[%" PRIu64 "] Connection accepted: %s", mId, mAddressStr.c_str());
 }
 
 void Connection::Disconnect() {
@@ -72,19 +72,19 @@ void Connection::Receive() {
 
     // check for error
     if (ret == -1 && (rc == SOCKET_EAGAIN || rc == SOCKET_EWOULDBLOCK)) {
-        //LOG_INFO("[%llu] continue", mId);
+        //LOG_INFO("[%" PRIu64 "] continue", mId);
         return;
     } else if (ret == 0 || (rc == SOCKET_ECONNRESET)) {
-        LOG_INFO("[%llu] Connection closed (%d, %d).", mId, ret, rc);
+        LOG_INFO("[%" PRIu64 "] Connection closed (%d, %d).", mId, ret, rc);
         Disconnect();
         return;
     } else if (ret < 0) {
-        LOG_ERROR("[%llu] Error receiving data (%d)!", mId, rc);
+        LOG_ERROR("[%" PRIu64 "] Error receiving data (%d)!", mId, rc);
         Disconnect();
         return;
     }
 
-    /*LOG_INFO("[%llu] Received data:", mId);
+    /*LOG_INFO("[%" PRIu64 "] Received data:", mId);
     for (size_t i = 0; i < (size_t)ret; i++) {
         printf("  %02X", data[i]);
     }
