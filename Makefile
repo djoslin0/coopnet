@@ -18,7 +18,12 @@ LIBS = -ljuice
 
 ifeq ($(OS),Windows_NT)
   LIBS += -lws2_32 -lbcrypt
-  LIB_DIR := lib/win64
+  ifeq ($(shell uname -m),x86_64)
+    LIB_DIR := lib/win64
+  else
+    LIB_DIR := lib/win32
+	CXXFLAGS += -Wno-error=format
+  endif
 else
   LIB_DIR := lib/linux
 endif
