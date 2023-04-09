@@ -1,4 +1,6 @@
 #include <map>
+#include <vector>
+#include <mutex>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -11,10 +13,42 @@
 
 #define PEER_TIMEOUT 15.0f /* 15 seconds */
 
-static void sOnStateChanged(juice_agent_t *agent, juice_state_t state, void *user_ptr) { ((Peer*)user_ptr)->OnStateChanged(state); }
 static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { ((Peer*)user_ptr)->OnCandidate(sdp); }
 static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { ((Peer*)user_ptr)->OnGatheringDone(); }
-static void sOnRecv(juice_agent_t *agent, const char *data, size_t size, void *user_ptr) { ((Peer*)user_ptr)->OnRecv(data, size); }
+
+static void sOnStateChanged(juice_agent_t *agent, juice_state_t state, void *user_ptr) {
+    Peer* peer = (Peer*)user_ptr;
+
+    PeerEventStateChanged stateChanged = {
+        .state = state
+    };
+
+    PeerEvent event = {
+        .peerId = peer->mId,
+        .type = PEER_EVENT_STATE_CHANGED,
+        .data = { .stateChanged = stateChanged },
+    };
+
+    std::lock_guard<std::mutex> guard(gClient->mEventsMutex);
+    gClient->mEvents.push_back(event);
+}
+
+static void sOnRecv(juice_agent_t *agent, const char *data, size_t size, void *user_ptr) {
+    Peer* peer = (Peer*)user_ptr;
+
+    PeerEventRecv recv = {
+        .data = (const uint8_t*)malloc(size),
+        .dataSize = size
+    };
+    memcpy((void*)recv.data, data, size);
+
+    std::lock_guard<std::mutex> guard(gClient->mEventsMutex);
+    gClient->mEvents.push_back({
+        .peerId = peer->mId,
+        .type = PEER_EVENT_RECV,
+        .data = { .recv = recv },
+    });
+}
 
 Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mId = aId;
@@ -23,7 +57,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mCurrentState = JUICE_STATE_DISCONNECTED;
     mTimeout = clock_elapsed() + PEER_TIMEOUT;
 
-    juice_set_log_level(JUICE_LOG_LEVEL_WARN);
+    juice_set_log_level(JUICE_LOG_LEVEL_VERBOSE);
 
     // Agent 1: Create agent
     juice_config_t config;
@@ -34,8 +68,8 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     config.stun_server_port = aClient->mStunServer.port;
 
     // TURN server example (use your own server in production)
-    mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
-    if (!mTurnServers) {
+    //mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
+    if (!mTurnServers || true) {
         config.turn_servers = nullptr;
         config.turn_servers_count = 0;
         LOG_ERROR("Failed to allocate turn servers");
@@ -59,6 +93,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     config.cb_gathering_done = sOnGatheringDone;
     config.cb_recv = sOnRecv;
     config.user_ptr = this;
+    //config.concurrency_mode = JUICE_CONCURRENCY_MODE_POLL;
 
     mConnected = false;
     mAgent = juice_create(&config);
@@ -70,18 +105,19 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
 }
 
 void Peer::Update() {
-    if (mConnected) { return; }
-    if (mPriority < gClient->mCurrentPriority) { return; }
+    // Check for peer connection fail
+    if (!mConnected && mPriority >= gClient->mCurrentPriority) {
+        float now = clock_elapsed();
+        if (now >= mTimeout) {
+            mTimeout = now + PEER_TIMEOUT;
 
-    float now = clock_elapsed();
-    if (now < mTimeout) { return; }
-    mTimeout = now + PEER_TIMEOUT;
+            LOG_INFO("Peer '%" PRIu64 "' failed", mId);
 
-    LOG_INFO("Peer '%" PRIu64 "' failed", mId);
-
-    MPacketPeerFailed(
-        { .lobbyId = gClient->mCurrentLobbyId, .peerId = mId }
-    ).Send(*gClient->mConnection);
+            MPacketPeerFailed(
+                { .lobbyId = gClient->mCurrentLobbyId, .peerId = mId }
+            ).Send(*gClient->mConnection);
+        }
+    }
 }
 
 void Peer::Connect(const char* aSdp) {
@@ -113,8 +149,8 @@ bool Peer::Send(const uint8_t* aData, size_t aDataLength) {
 
 void Peer::Disconnect() {
     if (mAgent) {
-        LOG_INFO("Peer disconnect");
-	    juice_destroy(mAgent);
+        LOG_INFO("Peer disconnect %" PRIu64 "", mId);
+        juice_destroy(mAgent);
         mAgent = nullptr;
         mTurnServers = nullptr;
         mConnected = false;
@@ -163,10 +199,10 @@ void Peer::OnGatheringDone() {
     LOG_INFO("Gathering done (%" PRIu64 ")", mId);
 }
 
-void Peer::OnRecv(const char* aData, size_t aSize) {
-    LOG_INFO("Recv (%" PRIu64 "), size %" PRIu64 ": %s", mId, (uint64_t)aSize, aData);
+void Peer::OnRecv(const uint8_t* aData, size_t aSize) {
+    LOG_INFO("Recv (%" PRIu64 "), size %" PRIu64 "", mId, (uint64_t)aSize);
 
-    if (gCoopNetCallbacks.OnReceive) {
-        gCoopNetCallbacks.OnReceive(mId, (const uint8_t*)aData, aSize);
+    if (mConnected && gCoopNetCallbacks.OnReceive) {
+        gCoopNetCallbacks.OnReceive(mId, aData, (uint64_t)aSize);
     }
 }

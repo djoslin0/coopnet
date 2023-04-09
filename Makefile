@@ -4,7 +4,7 @@ INCLUDES = -Icommon -Ilib/include
 LDFLAGS = -pthread
 
 COMMON_SRC := $(wildcard common/*.cpp)
-COMMON_OBJ := $(patsubst common/%.cpp, bin/o/%.o, $(COMMON_SRC))
+COMMON_OBJ := $(patsubst common/%.cpp, bin/o/common/%.o, $(COMMON_SRC))
 
 CLIENT_SRC = $(wildcard client/*.cpp) $(COMMON_SRC)
 CLIENT_OBJ = $(patsubst %.cpp, bin/o/%.o, $(CLIENT_SRC))
@@ -38,11 +38,8 @@ client: $(CLIENT_OBJ) | $(BIN_DIR)
 server: $(SERVER_OBJ) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ) $(LIBS)
 
-lib: $(COMMON_OBJ) | $(BIN_DIR)
+lib: $(CLIENT_OBJ) | $(BIN_DIR)
 	ar rcs $(BIN_DIR)/libcoopnet.a $(COMMON_OBJ)
-
-$(COMMON_OBJ): $(COMMON_SRC) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 bin/o/%.o: %.cpp | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@

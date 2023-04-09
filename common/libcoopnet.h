@@ -1,12 +1,6 @@
 #ifndef LIBCOOPNET_H
 #define LIBCOOPNET_H
 
-#ifdef _MSC_VER
-#define EXPORT __declspec(dllexport)
-#else
-#define EXPORT __attribute__((visibility("default")))
-#endif
-
 #if defined(__cplusplus) 
 #include <cstdint>
 extern "C" {
@@ -33,7 +27,7 @@ typedef struct {
     void (*OnConnected)(uint64_t aUserId);
     void (*OnDisconnected)(void);
     void (*OnLobbyCreated)(uint64_t aLobbyId, const char* aGame, const char* aVersion, const char* aTitle, uint16_t aMaxConnections);
-    void (*OnLobbyJoined)(uint64_t aLobbyId, uint64_t aUserId);
+    void (*OnLobbyJoined)(uint64_t aLobbyId, uint64_t aUserId, uint64_t aOwnerId);
     void (*OnLobbyLeft)(uint64_t aLobbyId, uint64_t aUserId);
     void (*OnLobbyListGot)(uint64_t aLobbyId, uint64_t aOwnerId, uint16_t aConnections, uint16_t aMaxConnections, const char* aGame, const char* aVersion, const char* aTitle);
     void (*OnReceive)(uint64_t aFromUserId, const uint8_t* aData, uint64_t aSize);
@@ -49,17 +43,17 @@ typedef struct {
 extern CoopNetCallbacks gCoopNetCallbacks;
 extern CoopNetSettings gCoopNetSettings;
 
-EXPORT bool coopnet_is_connected(void);
-EXPORT CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort);
-EXPORT CoopNetRc coopnet_shutdown(void);
-EXPORT CoopNetRc coopnet_update(void);
-EXPORT CoopNetRc coopnet_lobby_create(const char* aGame, const char* aVersion, const char* aTitle, uint16_t aMaxConnections);
-EXPORT CoopNetRc coopnet_lobby_join(uint64_t aLobbyId);
-EXPORT CoopNetRc coopnet_lobby_leave(uint64_t aLobbyId);
-EXPORT CoopNetRc coopnet_lobby_list_get(const char* aGame);
-EXPORT CoopNetRc coopnet_send(const uint8_t* aData, uint64_t aDataLength);
-EXPORT CoopNetRc coopnet_send_to(uint64_t aPeerId, const uint8_t* aData, uint64_t aDataLength);
-EXPORT CoopNetRc coopnet_unpeer(uint64_t aPeerId);
+bool coopnet_is_connected(void);
+CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort);
+CoopNetRc coopnet_shutdown(void);
+CoopNetRc coopnet_update(void);
+CoopNetRc coopnet_lobby_create(const char* aGame, const char* aVersion, const char* aTitle, uint16_t aMaxConnections);
+CoopNetRc coopnet_lobby_join(uint64_t aLobbyId);
+CoopNetRc coopnet_lobby_leave(uint64_t aLobbyId);
+CoopNetRc coopnet_lobby_list_get(const char* aGame);
+CoopNetRc coopnet_send(const uint8_t* aData, uint64_t aDataLength);
+CoopNetRc coopnet_send_to(uint64_t aPeerId, const uint8_t* aData, uint64_t aDataLength);
+CoopNetRc coopnet_unpeer(uint64_t aPeerId);
 
 #if defined(__cplusplus) 
 }

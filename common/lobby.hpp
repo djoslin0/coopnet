@@ -1,6 +1,5 @@
 #pragma once
 
-#include <thread>
 #include <vector>
 #include <mutex>
 #include "socket.hpp"

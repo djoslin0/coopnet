@@ -141,7 +141,7 @@ void Server::Update() {
             Connection* connection = it->second;
             // erase the connection if it's inactive, otherwise receive packets
             if (!connection->mActive) {
-                it = mConnections.erase(it);
+                mConnections.erase(it++);
                 LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
                 delete connection;
             } else {
@@ -182,6 +182,7 @@ void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
     MPacketLobbyJoined({
         .lobbyId = aLobby->mId,
         .userId = aConnection->mId,
+        .ownerId = aLobby->mOwner->mId,
         .priority = aConnection->mPriority
     }).Send(*aLobby);
 
@@ -193,6 +194,7 @@ void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
         MPacketLobbyJoined({
             .lobbyId = aLobby->mId,
             .userId = it->mId,
+            .ownerId = aLobby->mOwner->mId,
             .priority = it->mPriority
         }).Send(*aConnection);
     }

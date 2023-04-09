@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+#include <mutex>
 #include <map>
 #include <stdint.h>
 #include "connection.hpp"
@@ -14,9 +16,12 @@ class Client {
         uint64_t mCurrentLobbyId = 0;
         uint32_t mCurrentPriority = 0;
         Connection* mConnection = nullptr;
+        std::vector<PeerEvent> mEvents;
+        std::mutex mEventsMutex;
 
         StunTurnServer mStunServer;
         std::vector<StunTurnServer> mTurnServers;
+        bool mShutdown = false;
 
         ~Client();
 

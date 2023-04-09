@@ -1,7 +1,5 @@
 #pragma once
 
-#include <thread>
-
 #include "libcoopnet.h"
 #include "socket.hpp"
 #include "mpacket.hpp"

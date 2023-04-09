@@ -6,8 +6,8 @@
 Client* gClient = NULL;
 
 Client::~Client() {
+    Disconnect();
     if (mConnection) {
-        Disconnect();
         mConnection->Disconnect();
         delete mConnection;
         mConnection = nullptr;
@@ -50,16 +50,46 @@ void Client::Update() {
     if (!mConnection) { return ; }
     mConnection->Receive();
 
+    // update peer
     for (auto& it : mPeers) {
-        if (!it.second) { continue; }
-        it.second->Update();
+        if (it.second) {
+            it.second->Update();
+        }
+    }
+
+    // process queued data on main thread
+    {
+        std::lock_guard<std::mutex> guard(mEventsMutex);
+        for (auto& it : mEvents) {
+            Peer* peer = PeerGet(it.peerId);
+
+            switch (it.type) {
+                case PEER_EVENT_STATE_CHANGED:
+                    if (peer) {
+                        peer->OnStateChanged(it.data.stateChanged.state);
+                    }
+                    break;
+                case PEER_EVENT_RECV:
+                    if (it.data.recv.data) {
+                        if (peer) {
+                            peer->OnRecv(it.data.recv.data, it.data.recv.dataSize);
+                        }
+                        free((void*)it.data.recv.data);
+                        it.data.recv.data = nullptr;
+                    }
+                    break;
+            }
+        }
+        mEvents.clear();
     }
 }
 
 void Client::Disconnect() {
+    mShutdown = true;
     PeerEndAll();
     if (mConnection) {
         mConnection->Disconnect();
+        mConnection = nullptr;
     }
 }
 
@@ -72,9 +102,9 @@ void Client::PeerEnd(uint64_t aUserId) {
     Peer* peer = mPeers[aUserId];
     if (peer) {
         peer->Disconnect();
+        mPeers.erase(peer->mId);
         delete peer;
     }
-    mPeers.erase(aUserId);
     LOG_INFO("Peer end, count: %" PRIu64 "", (uint64_t)mPeers.size());
 }
 

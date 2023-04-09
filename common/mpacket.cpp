@@ -89,7 +89,7 @@ void MPacket::Send(Connection& connection) {
     }
 
     // send data buffer
-    size_t sent = sendto(connection.mSocket, (char*)&data[0], dataSize, 0, (const sockaddr*)&connection.mAddress, sizeof(struct sockaddr_in));
+    size_t sent = sendto(connection.mSocket, (char*)&data[0], dataSize, MSG_NOSIGNAL, (const sockaddr*)&connection.mAddress, sizeof(struct sockaddr_in));
     int rc = SOCKET_LAST_ERROR;
 
     // debug print packet
@@ -146,7 +146,7 @@ void MPacket::Process(Connection* connection, uint8_t* aData) {
 
     // sanity check data size
     if (header.dataSize != packet->mVoidDataSize) {
-        LOG_ERROR("Received the wrong data size: %u != %u", header.dataSize, packet->mVoidDataSize);
+        LOG_ERROR("Received the wrong data size: %u != %u (packetType %u)", header.dataSize, packet->mVoidDataSize, header.packetType);
         return;
     }
 
@@ -300,7 +300,7 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyJoined::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %" PRIu64 ", userId %" PRIu64 ", priority %u", mData.lobbyId, mData.userId, mData.priority);
+    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %" PRIu64 ", userId %" PRIu64 ", priority %u, ownerId %" PRIu64 "", mData.lobbyId, mData.userId, mData.priority, mData.ownerId);
 
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = mData.lobbyId;
@@ -313,7 +313,7 @@ bool MPacketLobbyJoined::Receive(Connection* connection) {
     }
 
     if (gCoopNetCallbacks.OnLobbyJoined) {
-        gCoopNetCallbacks.OnLobbyJoined(mData.lobbyId, mData.userId);
+        gCoopNetCallbacks.OnLobbyJoined(mData.lobbyId, mData.userId, mData.ownerId);
     }
 
     return true;

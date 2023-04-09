@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <string>
-#include <thread>
 #include <algorithm>
 
 #include "lobby.hpp"

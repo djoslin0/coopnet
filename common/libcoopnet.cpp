@@ -1,5 +1,4 @@
 #include "client.hpp"
-extern "C" {
 #include <stdbool.h>
 #include "libcoopnet.h"
 
@@ -28,9 +27,7 @@ CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort) {
 CoopNetRc coopnet_shutdown(void) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
 
-    gClient->Disconnect();
-    delete gClient;
-    gClient = nullptr;
+    gClient->mShutdown = true;
 
     return COOPNET_OK;
 }
@@ -38,6 +35,11 @@ CoopNetRc coopnet_shutdown(void) {
 CoopNetRc coopnet_update(void) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
     gClient->Update();
+
+    if (gClient->mShutdown) {
+        delete gClient;
+        gClient = nullptr;
+    }
     return COOPNET_OK;
 }
 
@@ -87,6 +89,4 @@ CoopNetRc coopnet_unpeer(uint64_t aPeerId) {
     }
     peer->Disconnect();
     return COOPNET_OK;
-}
-
 }
