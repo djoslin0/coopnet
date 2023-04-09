@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "coopnet.h"
+#include "libcoopnet.h"
 #include "peer.hpp"
 #include "client.hpp"
 #include "mpacket.hpp"

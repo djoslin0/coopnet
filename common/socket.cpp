@@ -1,5 +1,5 @@
 #include "socket.hpp"
-#include "coopnet.h"
+#include "libcoopnet.h"
 
 #ifdef _WIN32
 #include "logging.hpp"

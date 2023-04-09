@@ -6,7 +6,7 @@
 #include <fcntl.h>
 
 #include "connection.hpp"
-#include "coopnet.h"
+#include "libcoopnet.h"
 #include "logging.hpp"
 #include "mpacket.hpp"
 

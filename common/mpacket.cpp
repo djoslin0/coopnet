@@ -2,7 +2,7 @@
 #include <map>
 #include <string>
 #include <errno.h>
-#include "coopnet.h"
+#include "libcoopnet.h"
 #include "socket.hpp"
 #include "mpacket.hpp"
 #include "logging.hpp"

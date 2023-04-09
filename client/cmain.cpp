@@ -3,7 +3,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "coopnet.h"
+#include "libcoopnet.h"
 #include "logging.hpp"
 
 #define HOST "localhost"

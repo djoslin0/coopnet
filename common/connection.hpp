@@ -2,7 +2,7 @@
 
 #include <thread>
 
-#include "coopnet.h"
+#include "libcoopnet.h"
 #include "socket.hpp"
 #include "mpacket.hpp"
 #include "lobby.hpp"

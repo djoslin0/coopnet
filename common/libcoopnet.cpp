@@ -1,7 +1,7 @@
 #include "client.hpp"
 extern "C" {
 #include <stdbool.h>
-#include "coopnet.h"
+#include "libcoopnet.h"
 
 CoopNetCallbacks gCoopNetCallbacks = { 0 };
 CoopNetSettings gCoopNetSettings = { 0 };
@@ -65,14 +65,14 @@ CoopNetRc coopnet_lobby_list_get(const char* aGame) {
     return COOPNET_OK;
 }
 
-CoopNetRc coopnet_send(const uint8_t* aData, size_t aDataLength) {
+CoopNetRc coopnet_send(const uint8_t* aData, uint64_t aDataLength) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
     return gClient->PeerSend(aData, aDataLength)
         ? COOPNET_OK
         : COOPNET_FAILED;
 }
 
-CoopNetRc coopnet_send_to(uint64_t aPeerId, const uint8_t* aData, size_t aDataLength) {
+CoopNetRc coopnet_send_to(uint64_t aPeerId, const uint8_t* aData, uint64_t aDataLength) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
     return gClient->PeerSendTo(aPeerId, aData, aDataLength)
         ? COOPNET_OK
