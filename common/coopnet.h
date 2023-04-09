@@ -31,7 +31,12 @@ typedef struct {
     void (*OnPeerDisconnected)(uint64_t aPeerId);
 } CoopNetCallbacks;
 
+typedef struct {
+    bool SkipWinsockInit;
+} CoopNetSettings;
+
 extern CoopNetCallbacks gCoopNetCallbacks;
+extern CoopNetSettings gCoopNetSettings;
 
 bool coopnet_is_connected(void);
 CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort);

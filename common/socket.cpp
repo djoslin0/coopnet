@@ -1,16 +1,20 @@
 #include "socket.hpp"
 #include "logging.hpp"
+#include "coopnet.h"
 
 #ifdef _WIN32
 
 int SocketInitialize(int aAf, int aType, int aProtocol) {
     // start up winsock
-    WSADATA wsaData;
-    int rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (rc != NO_ERROR) {
-        LOG_ERROR("WSAStartup failed with error %d", rc);
-        return -1;
+    if (!gCoopNetSettings.SkipWinsockInit) {
+        WSADATA wsaData;
+        int rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
+        if (rc != NO_ERROR) {
+            LOG_ERROR("WSAStartup failed with error %d", rc);
+            return -1;
+        }
     }
+
     return socket(aAf, aType, aProtocol);
 }
 

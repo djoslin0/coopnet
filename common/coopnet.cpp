@@ -4,6 +4,7 @@ extern "C" {
 #include "coopnet.h"
 
 CoopNetCallbacks gCoopNetCallbacks = { 0 };
+CoopNetSettings gCoopNetSettings = { 0 };
 
 bool coopnet_is_connected(void) {
     return (gClient && gClient->mConnection && gClient->mConnection->mActive);
