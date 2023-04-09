@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Werror -std=c++11 -g
+CXXFLAGS = -Wall -Werror -std=c++11 -DJUICE_STATIC -g
 INCLUDES = -Icommon -Ilib/include
 LDFLAGS = -pthread
 
@@ -15,6 +15,13 @@ SERVER_OBJ = $(patsubst %.cpp, bin/o/%.o, $(SERVER_SRC))
 BIN_DIR = bin
 LIB_DIR = lib
 LIBS = -ljuice
+
+ifeq ($(OS),Windows_NT)
+  LIBS += -lws2_32 -lbcrypt
+  LIB_DIR := lib/win64
+else
+  LIB_DIR := lib/linux
+endif
 
 .PHONY: all client server lib clean
 

@@ -77,7 +77,7 @@ void Peer::Update() {
     if (now < mTimeout) { return; }
     mTimeout = now + PEER_TIMEOUT;
 
-    LOG_INFO("Peer '%lu' failed", mId);
+    LOG_INFO("Peer '%llu' failed", mId);
 
     MPacketPeerFailed(
         { .lobbyId = gClient->mCurrentLobbyId, .peerId = mId }
@@ -95,7 +95,7 @@ void Peer::Connect(const char* aSdp) {
 
 void Peer::SendSdp() {
     juice_get_local_description(mAgent, mSdp, JUICE_MAX_SDP_STRING_LEN);
-    LOG_INFO("Local description (%lu):\n%s\n", mId, mSdp);
+    LOG_INFO("Local description (%llu):\n%s\n", mId, mSdp);
 
     MPacketPeerSdp(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
@@ -106,7 +106,7 @@ void Peer::SendSdp() {
 }
 
 bool Peer::Send(const uint8_t* aData, size_t aDataLength) {
-    LOG_INFO("Peer sending to (%lu)\n", mId);
+    LOG_INFO("Peer sending to (%llu)\n", mId);
     juice_send(mAgent, (const char*)aData, aDataLength);
     return true;
 }
@@ -126,7 +126,7 @@ void Peer::CandidateAdd(const char* aSdp) {
 }
 
 void Peer::OnStateChanged(juice_state_t aState) {
-    LOG_INFO("State change (%lu): %s", mId, juice_state_to_string(aState));
+    LOG_INFO("State change (%llu): %s", mId, juice_state_to_string(aState));
 
     bool wasConnected = (mLastState == JUICE_STATE_CONNECTED) || (mLastState == JUICE_STATE_COMPLETED);
     bool wasDisconnected = (mLastState == JUICE_STATE_DISCONNECTED) || (mLastState == JUICE_STATE_FAILED);
@@ -151,7 +151,7 @@ void Peer::OnStateChanged(juice_state_t aState) {
 }
 
 void Peer::OnCandidate(const char* aSdp) {
-    LOG_INFO("Candidate (%lu): %s", mId, aSdp);
+    LOG_INFO("Candidate (%llu): %s", mId, aSdp);
 
     MPacketPeerCandidate(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
@@ -160,11 +160,11 @@ void Peer::OnCandidate(const char* aSdp) {
 }
 
 void Peer::OnGatheringDone() {
-    LOG_INFO("Gathering done (%lu)", mId);
+    LOG_INFO("Gathering done (%llu)", mId);
 }
 
 void Peer::OnRecv(const char* aData, size_t aSize) {
-    LOG_INFO("Recv (%lu), size %lu: %s", mId, aSize, aData);
+    LOG_INFO("Recv (%llu), size %llu: %s", mId, aSize, aData);
 
     if (gCoopNetCallbacks.OnReceive) {
         gCoopNetCallbacks.OnReceive(mId, (const uint8_t*)aData, aSize);

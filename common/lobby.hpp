@@ -3,9 +3,7 @@
 #include <thread>
 #include <vector>
 #include <mutex>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include "socket.hpp"
 #include "connection.hpp"
 #include "utils.hpp"
 

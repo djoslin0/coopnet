@@ -1,7 +1,7 @@
-#include <arpa/inet.h>
-#include <netdb.h>
 #include <stdexcept>
 #include <string>
+#include <time.h>
+#include "socket.hpp"
 
 // Convert a domain name to an in_addr using gethostbyname
 in_addr_t GetAddrFromDomain(const std::string& domain) {

@@ -1,5 +1,6 @@
 #ifndef COOPNET_H
 #define COOPNET_H
+#include <cstdint>
 extern "C" {
 #include <stdbool.h>
 

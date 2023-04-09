@@ -1,11 +1,9 @@
 #pragma once
 
 #include <thread>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
 
 #include "coopnet.h"
+#include "socket.hpp"
 #include "mpacket.hpp"
 #include "lobby.hpp"
 

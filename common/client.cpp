@@ -23,8 +23,8 @@ bool Client::Begin(std::string aHost, uint32_t aPort)
     mStunServer.port = 19302;
 
     // setup a socket
-    mConnection->mSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if(mConnection->mSocket == 0)
+    mConnection->mSocket = SocketInitialize(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(mConnection->mSocket <= 0)
     {
         LOG_ERROR("Socket failed");
         return false;
@@ -65,7 +65,7 @@ void Client::Disconnect() {
 
 void Client::PeerBegin(uint64_t aUserId, uint32_t aPriority) {
     mPeers[aUserId] = new Peer(this, aUserId, aPriority);
-    LOG_INFO("Peer begin, count: %lu", mPeers.size());
+    LOG_INFO("Peer begin, count: %u", (uint32_t)mPeers.size());
 }
 
 void Client::PeerEnd(uint64_t aUserId) {
@@ -75,7 +75,7 @@ void Client::PeerEnd(uint64_t aUserId) {
         delete peer;
     }
     mPeers.erase(aUserId);
-    LOG_INFO("Peer end, count: %lu", mPeers.size());
+    LOG_INFO("Peer end, count: %u", (uint32_t)mPeers.size());
 }
 
 void Client::PeerEndAll() {
@@ -87,7 +87,7 @@ void Client::PeerEndAll() {
         }
     }
     mPeers.clear();
-    LOG_INFO("Peer end all, count: %lu", mPeers.size());
+    LOG_INFO("Peer end all, count: %u", (uint32_t)mPeers.size());
 }
 
 Peer* Client::PeerGet(uint64_t aUserId) {

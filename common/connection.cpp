@@ -18,13 +18,13 @@ Connection::Connection(uint64_t id) {
 
     std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
     sAllConnections.insert(this);
-    LOG_INFO("Connections (added): %lu", sAllConnections.size());
+    LOG_INFO("Connections (added): %u", (uint32_t)sAllConnections.size());
 }
 
 Connection::~Connection() {
     std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
     sAllConnections.erase(this);
-    LOG_INFO("Connections (removed): %lu", sAllConnections.size());
+    LOG_INFO("Connections (removed): %u", (uint32_t)sAllConnections.size());
 }
 
 bool Connection::IsValid(Connection* connection) {
@@ -36,15 +36,14 @@ void Connection::Begin() {
     mActive = true;
 
     // set socket to non-blocking mode
-    int flags = fcntl(mSocket, F_GETFL, 0);
-    fcntl(mSocket, F_SETFL, flags | O_NONBLOCK);
+    SocketSetNonBlocking(mSocket);
 
     // convert address
     char asciiAddress[256] = { 0 };
     inet_ntop(AF_INET, &(mAddress.sin_addr), asciiAddress, sizeof(asciiAddress));
     mAddressStr = asciiAddress;
 
-    LOG_INFO("[%lu] Connection accepted: %s", mId, mAddressStr.c_str());
+    LOG_INFO("[%llu] Connection accepted: %s", mId, mAddressStr.c_str());
 }
 
 void Connection::Disconnect() {
@@ -55,7 +54,7 @@ void Connection::Disconnect() {
     }
 
     mActive = false;
-    close(mSocket);
+    SocketClose(mSocket);
 
     if (gCoopNetCallbacks.OnDisconnected) {
         gCoopNetCallbacks.OnDisconnected();
@@ -65,27 +64,27 @@ void Connection::Disconnect() {
 void Connection::Receive() {
     // receive from socket
     socklen_t len = sizeof(struct sockaddr_in);
-    int ret = recvfrom(mSocket, &mData[mDataSize], MPACKET_MAX_SIZE - mDataSize, MSG_DONTWAIT, (struct sockaddr *) &mAddress, &len);
-    int rc = errno;
+    int ret = recvfrom(mSocket, (char*)&mData[mDataSize], MPACKET_MAX_SIZE - mDataSize, MSG_DONTWAIT, (struct sockaddr *) &mAddress, &len);
+    int rc = SOCKET_LAST_ERROR;
 
     // make sure connection is still active
     if (!mActive) { return; }
 
     // check for error
-    if (ret == -1 && (rc == EAGAIN || rc == EWOULDBLOCK)) {
-        //LOG_INFO("[%lu] continue", mId);
+    if (ret == -1 && (rc == SOCKET_EAGAIN || rc == SOCKET_EWOULDBLOCK)) {
+        //LOG_INFO("[%llu] continue", mId);
         return;
-    } else if (ret == 0 || (rc ==  ECONNRESET)) {
-        LOG_INFO("[%lu] Connection closed (%d, %d).", mId, ret, rc);
+    } else if (ret == 0 || (rc == SOCKET_ECONNRESET)) {
+        LOG_INFO("[%llu] Connection closed (%d, %d).", mId, ret, rc);
         Disconnect();
         return;
     } else if (ret < 0) {
-        LOG_ERROR("[%lu] Error receiving data (%d)!", mId, rc);
+        LOG_ERROR("[%llu] Error receiving data (%d)!", mId, rc);
         Disconnect();
         return;
     }
 
-    /*LOG_INFO("[%lu] Received data:", mId);
+    /*LOG_INFO("[%llu] Received data:", mId);
     for (size_t i = 0; i < (size_t)ret; i++) {
         printf("  %02X", data[i]);
     }

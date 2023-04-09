@@ -1,9 +1,7 @@
-#include <arpa/inet.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <chrono>
 
+#include "socket.hpp"
 #include "logging.hpp"
 #include "server.hpp"
 #include "connection.hpp"
@@ -36,8 +34,9 @@ static void sReceiveStart(Server* server) { server->Receive(); }
 static void sUpdateStart(Server* server)  { server->Update(); }
 
 bool Server::Begin(uint32_t aPort) {
+
     // create a master socket
-    mSocket = socket(AF_INET, SOCK_STREAM, 0);
+    mSocket = SocketInitialize(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (mSocket <= 0) {
         LOG_ERROR("Master socket failed (%d)!", mSocket);
         return false;
@@ -129,7 +128,7 @@ void Server::Receive() {
         // remember connection
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
         mConnections[connection->mId] = connection;
-        LOG_INFO("[%lu] Connection added, count: %lu", connection->mId, mConnections.size());
+        LOG_INFO("[%llu] Connection added, count: %llu", connection->mId, mConnections.size());
     }
 }
 
@@ -143,7 +142,7 @@ void Server::Update() {
             // erase the connection if it's inactive, otherwise receive packets
             if (!connection->mActive) {
                 it = mConnections.erase(it);
-                LOG_INFO("[%lu] Connection removed, count: %lu", connection->mId, mConnections.size());
+                LOG_INFO("[%llu] Connection removed, count: %llu", connection->mId, mConnections.size());
                 delete connection;
             } else {
                 it->second->Receive();
@@ -208,7 +207,7 @@ void Server::OnLobbyLeave(Lobby* aLobby, Connection* aConnection) {
 
 void Server::OnLobbyDestroy(Lobby* aLobby) {
     mLobbies.erase(aLobby->mId);
-    LOG_INFO("[%lu] Lobby removed, count: %lu", aLobby->mId, mLobbies.size());
+    LOG_INFO("[%llu] Lobby removed, count: %llu", aLobby->mId, mLobbies.size());
 }
 
 void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections) {
@@ -221,7 +220,7 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
     Lobby* lobby = new Lobby(aConnection, mNextLobbyId++, aGame, aVersion, aTitle, aMaxConnections);
     mLobbies[lobby->mId] = lobby;
 
-    LOG_INFO("[%lu] Lobby added, count: %lu", lobby->mId, mLobbies.size());
+    LOG_INFO("[%llu] Lobby added, count: %llu", lobby->mId, mLobbies.size());
 
     // notify of lobby creation
     MPacketLobbyCreated({
