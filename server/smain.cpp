@@ -1,7 +1,7 @@
 #include <iostream>
 #include "server.hpp"
 
-#define PORT 8888
+#define PORT 34197
 #define EXIT_FAILURE 1
 
 int main(int argc, char *argv[]) {
