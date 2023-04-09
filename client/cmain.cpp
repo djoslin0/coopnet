@@ -81,6 +81,10 @@ int main(int argc, char const *argv[]) {
         } else if (words[0] == "disconnect") {
             gCoopNetCallbacks.OnDisconnected = nullptr;
             coopnet_shutdown();
+        } else if (words[0] == "unpeer") {
+            if (words.size() == 2) {
+                coopnet_unpeer((uint64_t)atoi(words[1].c_str()));
+            }
         }
 
     }

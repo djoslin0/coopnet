@@ -12,6 +12,7 @@ class Client {
     public:
         uint64_t mCurrentUserId = 0;
         uint64_t mCurrentLobbyId = 0;
+        uint32_t mCurrentPriority = 0;
         Connection* mConnection = nullptr;
 
         StunTurnServer mStunServer;
@@ -23,10 +24,10 @@ class Client {
         void Update();
         void Disconnect();
 
-        void PeerBegin(uint64_t userId);
-        void PeerEnd(uint64_t userId);
+        void PeerBegin(uint64_t aUserId, uint32_t aPriority);
+        void PeerEnd(uint64_t aUserId);
         void PeerEndAll();
-        Peer* PeerGet(uint64_t userId);
+        Peer* PeerGet(uint64_t aUserId);
         bool PeerSend(const uint8_t* aData, size_t aDataLength);
         bool PeerSendTo(uint64_t aPeerId, const uint8_t* aData, size_t aDataLength);
 

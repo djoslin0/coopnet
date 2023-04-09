@@ -182,7 +182,8 @@ void Server::LobbyListGet(Connection& aConnection, std::string aGame) {
 void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
     MPacketLobbyJoined({
         .lobbyId = aLobby->mId,
-        .userId = aConnection->mId
+        .userId = aConnection->mId,
+        .priority = aConnection->mPriority
     }).Send(*aLobby);
 
     // inform joiner of other connections
@@ -192,7 +193,8 @@ void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
         }
         MPacketLobbyJoined({
             .lobbyId = aLobby->mId,
-            .userId = it->mId
+            .userId = it->mId,
+            .priority = it->mPriority
         }).Send(*aConnection);
     }
 }

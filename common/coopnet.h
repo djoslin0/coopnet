@@ -42,6 +42,7 @@ CoopNetRc coopnet_lobby_leave(uint64_t aLobbyId);
 CoopNetRc coopnet_lobby_list_get(const char* aGame);
 CoopNetRc coopnet_send(const uint8_t* aData, size_t aDataLength);
 CoopNetRc coopnet_send_to(uint64_t aPeerId, const uint8_t* aData, size_t aDataLength);
+CoopNetRc coopnet_unpeer(uint64_t aPeerId);
 
 }
 #endif

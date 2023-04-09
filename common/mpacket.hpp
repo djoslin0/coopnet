@@ -23,6 +23,7 @@ enum MPacketType {
     MPACKET_LOBBY_LIST_GOT,
     MPACKET_PEER_SDP,
     MPACKET_PEER_CANDIDATE,
+    MPACKET_PEER_FAILED,
     MPACKET_STUN_TURN,
     MPACKET_ERROR,
     MPACKET_MAX,
@@ -63,6 +64,7 @@ typedef struct {
 typedef struct {
     uint64_t lobbyId;
     uint64_t userId;
+    uint32_t priority;
 } MPacketLobbyJoinedData;
 
 typedef struct {
@@ -93,6 +95,11 @@ typedef struct {
     uint64_t lobbyId;
     uint64_t userId;
 } MPacketPeerCandidateData;
+
+typedef struct {
+    uint64_t lobbyId;
+    uint64_t peerId;
+} MPacketPeerFailedData;
 
 typedef struct {
     uint8_t isStun;
@@ -274,6 +281,17 @@ class MPacketPeerCandidate : public MPacketImpl<MPacketPeerCandidateData> {
             .packetType = MPACKET_PEER_CANDIDATE,
             .stringCount = 1,
             .sendType = MSEND_TYPE_BOTH
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketPeerFailed : public MPacketImpl<MPacketPeerFailedData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_PEER_FAILED,
+            .stringCount = 0,
+            .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
 };

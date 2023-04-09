@@ -11,3 +11,4 @@ typedef struct {
 } StunTurnServer;
 
 in_addr_t GetAddrFromDomain(const std::string& domain);
+float clock_elapsed(void);

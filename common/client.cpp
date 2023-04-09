@@ -47,8 +47,12 @@ bool Client::Begin(std::string aHost, uint32_t aPort)
 }
 
 void Client::Update() {
-    if (mConnection) {
-        mConnection->Receive();
+    if (!mConnection) { return ; }
+    mConnection->Receive();
+
+    for (auto& it : mPeers) {
+        if (!it.second) { continue; }
+        it.second->Update();
     }
 }
 
@@ -59,18 +63,18 @@ void Client::Disconnect() {
     }
 }
 
-void Client::PeerBegin(uint64_t userId) {
-    mPeers[userId] = new Peer(this, userId);
+void Client::PeerBegin(uint64_t aUserId, uint32_t aPriority) {
+    mPeers[aUserId] = new Peer(this, aUserId, aPriority);
     LOG_INFO("Peer begin, count: %lu", mPeers.size());
 }
 
-void Client::PeerEnd(uint64_t userId) {
-    Peer* peer = mPeers[userId];
+void Client::PeerEnd(uint64_t aUserId) {
+    Peer* peer = mPeers[aUserId];
     if (peer) {
         peer->Disconnect();
         delete peer;
     }
-    mPeers.erase(userId);
+    mPeers.erase(aUserId);
     LOG_INFO("Peer end, count: %lu", mPeers.size());
 }
 
@@ -86,8 +90,8 @@ void Client::PeerEndAll() {
     LOG_INFO("Peer end all, count: %lu", mPeers.size());
 }
 
-Peer* Client::PeerGet(uint64_t userId) {
-    return mPeers[userId];
+Peer* Client::PeerGet(uint64_t aUserId) {
+    return mPeers[aUserId];
 }
 
 bool Client::PeerSend(const uint8_t* aData, size_t aDataLength) {

@@ -14,11 +14,12 @@ class Connection;
 class Lobby {
     private:
     public:
-        bool mActive;
-        Connection* mOwner;
-        uint64_t mId;
+        bool mActive = false;
+        Connection* mOwner = nullptr;
+        uint64_t mId = 0;
         std::vector<Connection*> mConnections;
-        uint16_t mMaxConnections;
+        uint16_t mMaxConnections = 16;
+        uint32_t mNextPriority = 0;
 
         std::string mGame;
         std::string mVersion;

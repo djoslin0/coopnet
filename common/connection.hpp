@@ -23,6 +23,7 @@ class Connection {
         int mSocket = 0;
         struct sockaddr_in mAddress = { 0};
         Lobby* mLobby = nullptr;
+        uint32_t mPriority = 0;
 
         Connection(uint64_t id);
         ~Connection();

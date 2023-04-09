@@ -1,7 +1,7 @@
 #include <map>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h> // for sleep
+#include <unistd.h>
 #include "coopnet.h"
 #include "peer.hpp"
 #include "client.hpp"
@@ -9,15 +9,19 @@
 #include "logging.hpp"
 #include "utils.hpp"
 
+#define PEER_TIMEOUT 15.0f /* 15 seconds */
+
 static void sOnStateChanged(juice_agent_t *agent, juice_state_t state, void *user_ptr) { ((Peer*)user_ptr)->OnStateChanged(state); }
 static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { ((Peer*)user_ptr)->OnCandidate(sdp); }
 static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { ((Peer*)user_ptr)->OnGatheringDone(); }
 static void sOnRecv(juice_agent_t *agent, const char *data, size_t size, void *user_ptr) { ((Peer*)user_ptr)->OnRecv(data, size); }
 
-Peer::Peer(Client* client, uint64_t aId) {
+Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mId = aId;
+    mPriority = aPriority;
     mLastState = JUICE_STATE_DISCONNECTED;
     mCurrentState = JUICE_STATE_DISCONNECTED;
+    mTimeout = clock_elapsed() + PEER_TIMEOUT;
 
     juice_set_log_level(JUICE_LOG_LEVEL_WARN);
 
@@ -26,25 +30,25 @@ Peer::Peer(Client* client, uint64_t aId) {
     memset(&config, 0, sizeof(config));
 
     // STUN server example
-    config.stun_server_host = client->mStunServer.host.c_str();
-    config.stun_server_port = client->mStunServer.port;
+    config.stun_server_host = aClient->mStunServer.host.c_str();
+    config.stun_server_port = aClient->mStunServer.port;
 
     // TURN server example (use your own server in production)
-    mTurnServers = (juice_turn_server_t*)calloc(client->mTurnServers.size(), sizeof(juice_turn_server_t));
+    mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
     if (!mTurnServers) {
         config.turn_servers = nullptr;
         config.turn_servers_count = 0;
         LOG_ERROR("Failed to allocate turn servers");
     } else {
-        for (uint32_t i = 0; i < client->mTurnServers.size(); i++) {
-            StunTurnServer* turn = &client->mTurnServers[i];
+        for (uint32_t i = 0; i < aClient->mTurnServers.size(); i++) {
+            StunTurnServer* turn = &aClient->mTurnServers[i];
             mTurnServers[i].host = turn->host.c_str();
             mTurnServers[i].port = turn->port;
             mTurnServers[i].username = turn->username.c_str();
             mTurnServers[i].password = turn->password.c_str();
         }
         config.turn_servers = mTurnServers;
-        config.turn_servers_count = client->mTurnServers.size();
+        config.turn_servers_count = aClient->mTurnServers.size();
     }
 
 	config.local_port_range_begin = 60000;
@@ -63,6 +67,21 @@ Peer::Peer(Client* client, uint64_t aId) {
     if (gClient->mCurrentUserId < mId) {
         SendSdp();
     }
+}
+
+void Peer::Update() {
+    if (mConnected) { return; }
+    if (mPriority < gClient->mCurrentPriority) { return; }
+
+    float now = clock_elapsed();
+    if (now < mTimeout) { return; }
+    mTimeout = now + PEER_TIMEOUT;
+
+    LOG_INFO("Peer '%lu' failed", mId);
+
+    MPacketPeerFailed(
+        { .lobbyId = gClient->mCurrentLobbyId, .peerId = mId }
+    ).Send(*gClient->mConnection);
 }
 
 void Peer::Connect(const char* aSdp) {
@@ -93,11 +112,12 @@ bool Peer::Send(const uint8_t* aData, size_t aDataLength) {
 }
 
 void Peer::Disconnect() {
-    LOG_INFO("Peer disconnect");
     if (mAgent) {
+        LOG_INFO("Peer disconnect");
 	    juice_destroy(mAgent);
         mAgent = nullptr;
         mTurnServers = nullptr;
+        mConnected = false;
     }
 }
 

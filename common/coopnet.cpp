@@ -78,4 +78,14 @@ CoopNetRc coopnet_send_to(uint64_t aPeerId, const uint8_t* aData, size_t aDataLe
         : COOPNET_FAILED;
 }
 
+CoopNetRc coopnet_unpeer(uint64_t aPeerId) {
+    if (!gClient) { return COOPNET_DISCONNECTED; }
+    Peer* peer = gClient->PeerGet(aPeerId);
+    if (!peer) {
+        return COOPNET_FAILED;
+    }
+    peer->Disconnect();
+    return COOPNET_OK;
+}
+
 }

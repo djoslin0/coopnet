@@ -51,6 +51,7 @@ enum MPacketErrorNumber Lobby::Join(Connection* aConnection) {
         mConnections.push_back(aConnection);
     }
     aConnection->mLobby = this;
+    aConnection->mPriority = mNextPriority++;
 
     if (gOnLobbyJoin) { gOnLobbyJoin(this, aConnection); }
     return MERR_NONE;

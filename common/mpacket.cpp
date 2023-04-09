@@ -24,6 +24,7 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketLobbyListGot(),
     new MPacketPeerSdp(),
     new MPacketPeerCandidate(),
+    new MPacketPeerFailed(),
     new MPacketStunTurn(),
     new MPacketError(),
 };
@@ -282,7 +283,7 @@ bool MPacketLobbyCreated::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyJoin::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_JOIN received: lobbId %lu", mData.lobbyId);
+    LOG_INFO("MPACKET_LOBBY_JOIN received: lobbyId %lu", mData.lobbyId);
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (!lobby) {
@@ -300,12 +301,13 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyJoined::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %lu, userId %lu", mData.lobbyId, mData.userId);
+    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %lu, userId %lu, priority %u", mData.lobbyId, mData.userId, mData.priority);
 
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = mData.lobbyId;
+        gClient->mCurrentPriority = mData.priority;
     } else if (mData.lobbyId == gClient->mCurrentLobbyId) {
-        gClient->PeerBegin(mData.userId);
+        gClient->PeerBegin(mData.userId, mData.priority);
     } else {
         LOG_ERROR("Received 'joined' for the wrong lobby");
         return false;
@@ -337,6 +339,7 @@ bool MPacketLobbyLeft::Receive(Connection* connection) {
 
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = 0;
+        gClient->mCurrentPriority = 0;
         gClient->PeerEndAll();
     } else if (mData.lobbyId == gClient->mCurrentLobbyId) {
         gClient->PeerEnd(mData.userId);
@@ -439,6 +442,33 @@ bool MPacketPeerCandidate::Receive(Connection *connection) {
 
     LOG_ERROR("Received peer sdp without being server or client");
     return false;
+}
+
+bool MPacketPeerFailed::Receive(Connection *connection) {
+    LOG_INFO("MPACKET_PEER_FAILED received: lobbyId %lu, peerId %lu", mData.lobbyId, mData.peerId);
+    // make sure client is still in this lobby
+    if (!connection->mLobby || connection->mLobby->mId != mData.lobbyId) {
+        LOG_ERROR("Peer failed, but the one that saw the failure is no longer in the lobby");
+        return false;
+    }
+
+    // make sure peer is still in this lobby
+    Connection* peer = gServer->ConnectionGet(mData.peerId);
+    if (!peer || peer->mLobby->mId != mData.lobbyId) {
+        LOG_ERROR("Peer failed, but the peer of the one that saw the failure is no longer in the lobby");
+        return false;
+    }
+
+    // check the priority of the two connections
+    if (peer->mPriority <= connection->mPriority) {
+        LOG_ERROR("Peer failed, but the priority was incorrect");
+        return false;
+    }
+
+    // kick them
+    connection->mLobby->Leave(peer);
+
+    return true;
 }
 
 bool MPacketStunTurn::Receive(Connection* connection) {

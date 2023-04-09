@@ -13,13 +13,17 @@ class Peer {
         bool mConnected = false;
         juice_state_t mCurrentState = JUICE_STATE_DISCONNECTED;
         juice_state_t mLastState = JUICE_STATE_DISCONNECTED;
+        uint32_t mPriority = 0;
+        float mTimeout = 0;
 
         void SendSdp();
 
     public:
         char mSdp[JUICE_MAX_SDP_STRING_LEN];
 
-        Peer(Client* client, uint64_t aId);
+        Peer(Client* client, uint64_t aId, uint32_t aPriority);
+
+        void Update();
 
         void Connect(const char* aSdp);
         void Disconnect();
