@@ -1,8 +1,8 @@
 #include "socket.hpp"
-#include "logging.hpp"
 #include "coopnet.h"
 
 #ifdef _WIN32
+#include "logging.hpp"
 
 int SocketInitialize(int aAf, int aType, int aProtocol) {
     // start up winsock

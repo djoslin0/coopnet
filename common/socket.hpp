@@ -17,6 +17,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <unistd.h>
+#include <fnctl.h>
+#include <netdb.h>
 
 #define SOCKET_LAST_ERROR errno
 #define SOCKET_EAGAIN EAGAIN
