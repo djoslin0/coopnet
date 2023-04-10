@@ -18,12 +18,12 @@ StunTurnServer sStunServer = {
 };
 
 StunTurnServer sTurnServers[] = {
-    {
+    /*{
         .host = "openrelay.metered.ca",
         .username = "openrelayproject",
         .password = "openrelayproject",
         .port = 80,
-    },
+    },*/
 };
 
 static void sOnLobbyJoin(Lobby* lobby, Connection* connection) { gServer->OnLobbyJoin(lobby, connection); }
