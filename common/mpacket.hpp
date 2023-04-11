@@ -181,7 +181,7 @@ class MPacketLobbyCreate : public MPacketImpl<MPacketLobbyCreateData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_CREATE,
-            .stringCount = 3,
+            .stringCount = 5,
             .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
@@ -192,7 +192,7 @@ class MPacketLobbyCreated : public MPacketImpl<MPacketLobbyCreatedData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_CREATED,
-            .stringCount = 3,
+            .stringCount = 4,
             .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
@@ -203,7 +203,7 @@ class MPacketLobbyJoin : public MPacketImpl<MPacketLobbyJoinData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_JOIN,
-            .stringCount = 0,
+            .stringCount = 1,
             .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
@@ -247,7 +247,7 @@ class MPacketLobbyListGet : public MPacketImpl<MPacketLobbyListGetData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LIST_GET,
-            .stringCount = 1,
+            .stringCount = 2,
             .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
@@ -258,7 +258,7 @@ class MPacketLobbyListGot : public MPacketImpl<MPacketLobbyListGotData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LIST_GOT,
-            .stringCount = 3,
+            .stringCount = 4,
             .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;

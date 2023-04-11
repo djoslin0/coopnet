@@ -36,10 +36,10 @@ class Client {
         bool PeerSend(const uint8_t* aData, size_t aDataLength);
         bool PeerSendTo(uint64_t aPeerId, const uint8_t* aData, size_t aDataLength);
 
-        void LobbyCreate(std::string aGame, std::string aVersion, std::string aTitle, uint16_t aMaxConnections);
-        void LobbyJoin(uint64_t aLobbyId);
+        void LobbyCreate(std::string aGame, std::string aVersion, std::string aHostName, std::string aMode, uint16_t aMaxConnections, std::string aPassword);
+        void LobbyJoin(uint64_t aLobbyId, std::string aPassword);
         void LobbyLeave(uint64_t aLobbyId);
-        void LobbyListGet(std::string aGame);
+        void LobbyListGet(std::string aGame, std::string aPassword);
 };
 
 extern Client* gClient;

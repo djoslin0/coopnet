@@ -160,10 +160,11 @@ Lobby* Server::LobbyGet(uint64_t aLobbyId) {
     return mLobbies[aLobbyId];
 }
 
-void Server::LobbyListGet(Connection& aConnection, std::string aGame) {
+void Server::LobbyListGet(Connection& aConnection, std::string aGame, std::string aPassword) {
     for (auto& it : mLobbies) {
         if (!it.second) { continue; }
         if (it.second->mGame != aGame) { continue; }
+        if (it.second->mPassword != aPassword) { continue; }
 
         MPacketLobbyListGot({
             .lobbyId = it.first,
@@ -173,7 +174,8 @@ void Server::LobbyListGet(Connection& aConnection, std::string aGame) {
         }, {
             it.second->mGame,
             it.second->mVersion,
-            it.second->mTitle,
+            it.second->mHostName,
+            it.second->mMode,
         }).Send(aConnection);
     }
 }
@@ -212,14 +214,14 @@ void Server::OnLobbyDestroy(Lobby* aLobby) {
     LOG_INFO("[%" PRIu64 "] Lobby removed, count: %" PRIu64 "", aLobby->mId, (uint64_t)mLobbies.size());
 }
 
-void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections) {
+void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword) {
     // check if this connection already has a lobby
     if (aConnection->mLobby) {
         aConnection->mLobby->Leave(aConnection);
     }
 
     // create the new lobby
-    Lobby* lobby = new Lobby(aConnection, mNextLobbyId++, aGame, aVersion, aTitle, aMaxConnections);
+    Lobby* lobby = new Lobby(aConnection, mNextLobbyId++, aGame, aVersion, aHostName, aMode, aMaxConnections, aPassword);
     mLobbies[lobby->mId] = lobby;
 
     LOG_INFO("[%" PRIu64 "] Lobby added, count: %" PRIu64 "", lobby->mId, (uint64_t)mLobbies.size());
@@ -231,8 +233,9 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
     }, {
         lobby->mGame,
         lobby->mVersion,
-        lobby->mTitle,
+        lobby->mHostName,
+        lobby->mMode,
     }).Send(*aConnection);
 
-    lobby->Join(aConnection);
+    lobby->Join(aConnection, aPassword);
 }

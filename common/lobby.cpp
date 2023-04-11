@@ -11,13 +11,15 @@ void (*gOnLobbyJoin)(Lobby* lobby, Connection* connection) = nullptr;
 void (*gOnLobbyLeave)(Lobby* lobby, Connection* connection) = nullptr;
 void (*gOnLobbyDestroy)(Lobby* lobby) = nullptr;
 
-Lobby::Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections) {
+Lobby::Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword) {
     mOwner = aOwner;
     mId = aId;
     mGame = aGame;
     mVersion = aVersion;
-    mTitle = aTitle;
+    mHostName = aHostName;
+    mMode = aMode;
     mMaxConnections = aMaxConnections;
+    mPassword = aPassword;
 }
 
 Lobby::~Lobby() {
@@ -30,7 +32,7 @@ Lobby::~Lobby() {
     if (gOnLobbyDestroy) { gOnLobbyDestroy(this); }
 }
 
-enum MPacketErrorNumber Lobby::Join(Connection* aConnection) {
+enum MPacketErrorNumber Lobby::Join(Connection* aConnection, std::string& aPassword) {
     // sanity check
     if (!aConnection) { return MERR_LOBBY_JOIN_FAILED; }
     if (aConnection->mLobby == this) { return MERR_LOBBY_JOIN_FAILED; }
@@ -43,6 +45,11 @@ enum MPacketErrorNumber Lobby::Join(Connection* aConnection) {
     // find out if we're already in this
     if (mConnections.size() >= mMaxConnections) {
         return MERR_LOBBY_JOIN_FULL;
+    }
+
+    // make sure password matches
+    if (mPassword != aPassword) {
+        return MERR_LOBBY_PASSWORD_INCORRECT;
     }
 
     auto it = std::find(mConnections.begin(), mConnections.end(), aConnection);

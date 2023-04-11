@@ -50,24 +50,30 @@ int main(int argc, char const *argv[]) {
         }
 
         if (words[0] == "create" || words[0] == "c") {
-            if (words.size() == 5) {
-                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), (uint16_t)atoi(words[4].c_str()));
+            if (words.size() == 6) {
+                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), words[4].c_str(), (uint16_t)atoi(words[5].c_str()), "");
+            } else if (words.size() == 7) {
+                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), words[4].c_str(), (uint16_t)atoi(words[5].c_str()), words[6].c_str());
             } else {
-                coopnet_lobby_create("sm64ex-coop", "beta 34", "This is a title!", 16);
+                coopnet_lobby_create("sm64ex-coop", "beta 34", "Host's Name", "Super Mario 64", 16, "");
             }
         } else if (words[0] == "join" || words[0] == "j") {
             if (words.size() == 2) {
-                coopnet_lobby_join((uint64_t)atoi(words[1].c_str()));
+                coopnet_lobby_join((uint64_t)atoi(words[1].c_str()), "");
+            } else if (words.size() == 3) {
+                coopnet_lobby_join((uint64_t)atoi(words[1].c_str()), words[2].c_str());
             }
         } else if (words[0] == "leave" || words[0] == "l") {
             if (words.size() == 2) {
                 coopnet_lobby_leave((uint64_t)atoi(words[1].c_str()));
             }
         } else if (words[0] == "list" || words[0] == "ls") {
-            if (words.size() == 2) {
-                coopnet_lobby_list_get(words[1].c_str());
+            if (words.size() == 3) {
+                coopnet_lobby_list_get(words[1].c_str(), words[2].c_str());
+            } else if (words.size() == 2) {
+                coopnet_lobby_list_get(words[1].c_str(), "");
             } else {
-                coopnet_lobby_list_get("sm64ex-coop");
+                coopnet_lobby_list_get("sm64ex-coop", "");
             }
         } else if (words[0] == "send" || words[0] == "s") {
             if (words.size() == 2) {

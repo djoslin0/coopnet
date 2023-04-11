@@ -17,6 +17,7 @@ CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort) {
     
     if (!ret) {
         coopnet_shutdown();
+        coopnet_update();
     }
 
     return ret
@@ -43,15 +44,15 @@ CoopNetRc coopnet_update(void) {
     return COOPNET_OK;
 }
 
-CoopNetRc coopnet_lobby_create(const char* aGame, const char* aVersion, const char* aTitle, uint16_t aMaxConnections) {
+CoopNetRc coopnet_lobby_create(const char* aGame, const char* aVersion, const char* aHostName, const char* aMode, uint16_t aMaxConnections, const char* aPassword) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
-    gClient->LobbyCreate(aGame, aVersion, aTitle, aMaxConnections);
+    gClient->LobbyCreate(aGame, aVersion, aHostName, aMode, aMaxConnections, aPassword);
     return COOPNET_OK;
 }
 
-CoopNetRc coopnet_lobby_join(uint64_t aLobbyId) {
+CoopNetRc coopnet_lobby_join(uint64_t aLobbyId, const char* aPassword) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
-    gClient->LobbyJoin(aLobbyId);
+    gClient->LobbyJoin(aLobbyId, aPassword);
     return COOPNET_OK;
 }
 
@@ -61,9 +62,9 @@ CoopNetRc coopnet_lobby_leave(uint64_t aLobbyId) {
     return COOPNET_OK;
 }
 
-CoopNetRc coopnet_lobby_list_get(const char* aGame) {
+CoopNetRc coopnet_lobby_list_get(const char* aGame, const char* aPassword) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
-    gClient->LobbyListGet(aGame);
+    gClient->LobbyListGet(aGame, aPassword);
     return COOPNET_OK;
 }
 

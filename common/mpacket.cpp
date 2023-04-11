@@ -259,10 +259,13 @@ bool MPacketJoined::Receive(Connection* connection) {
 bool MPacketLobbyCreate::Receive(Connection* connection) {
     std::string& game = mStringData[0];
     std::string& version = mStringData[1];
-    std::string& title = mStringData[2];
+    std::string& hostName = mStringData[2];
+    std::string& mode = mStringData[3];
+    std::string& password = mStringData[4];
 
-    LOG_INFO("MPACKET_LOBBY_CREATE received: game '%s', version '%s', title '%s', maxconnections %u", game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
-    gServer->LobbyCreate(connection, game, version, title, mData.maxConnections);
+    LOG_INFO("MPACKET_LOBBY_CREATE received: game '%s', version '%s', hostName '%s', mode '%s', maxconnections %u, password '%s'",
+        game.c_str(), version.c_str(), hostName.c_str(), mode.c_str(), mData.maxConnections, password.c_str());
+    gServer->LobbyCreate(connection, game, version, hostName, mode, mData.maxConnections, password);
 
     return true;
 }
@@ -270,12 +273,14 @@ bool MPacketLobbyCreate::Receive(Connection* connection) {
 bool MPacketLobbyCreated::Receive(Connection* connection) {
     std::string& game = mStringData[0];
     std::string& version = mStringData[1];
-    std::string& title = mStringData[2];
+    std::string& hostName = mStringData[2];
+    std::string& mode = mStringData[3];
 
-    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %" PRIu64 ", game '%s', version '%s', title '%s', maxConnections %" PRIu64 "", mData.lobbyId, game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
+    LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %" PRIu64 ", game '%s', version '%s', hostName '%s', mode '%s', maxConnections %" PRIu64 "",
+        mData.lobbyId, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str(), mData.maxConnections);
 
     if (gCoopNetCallbacks.OnLobbyCreated) {
-        gCoopNetCallbacks.OnLobbyCreated(mData.lobbyId, game.c_str(), version.c_str(), title.c_str(), mData.maxConnections);
+        gCoopNetCallbacks.OnLobbyCreated(mData.lobbyId, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str(), mData.maxConnections);
     }
 
     return true;
@@ -284,13 +289,15 @@ bool MPacketLobbyCreated::Receive(Connection* connection) {
 bool MPacketLobbyJoin::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_JOIN received: lobbyId %" PRIu64 "", mData.lobbyId);
 
+    std::string& password = mStringData[0];
+
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (!lobby) {
         MPacketError({ .errorNumber = MERR_LOBBY_NOT_FOUND }).Send(*connection);
         return false;
     }
 
-    enum MPacketErrorNumber rc = lobby->Join(connection);
+    enum MPacketErrorNumber rc = lobby->Join(connection, password);
     if (rc != MERR_NONE) {
         MPacketError({ .errorNumber = (uint16_t)rc }).Send(*connection);
         return false;
@@ -355,19 +362,22 @@ bool MPacketLobbyLeft::Receive(Connection* connection) {
 
 bool MPacketLobbyListGet::Receive(Connection* connection) {
     std::string& game = mStringData[0];
+    std::string& password = mStringData[1];
     LOG_INFO("MPACKET_LOBBY_LIST_GET received: game '%s'", game.c_str());
-    gServer->LobbyListGet(*connection, game);
+    gServer->LobbyListGet(*connection, game, password);
     return true;
 }
 
 bool MPacketLobbyListGot::Receive(Connection* connection) {
     std::string& game = mStringData[0];
     std::string& version = mStringData[1];
-    std::string& title = mStringData[2];
-    LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %" PRIu64 ", ownerId %" PRIu64 ", connections %u/%u, game '%s', version '%s', title '%s'", mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
+    std::string& hostName = mStringData[2];
+    std::string& mode = mStringData[3];
+    LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %" PRIu64 ", ownerId %" PRIu64 ", connections %u/%u, game '%s', version '%s', hostname '%s', mode '%s'",
+        mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
 
     if (gCoopNetCallbacks.OnLobbyListGot) {
-        gCoopNetCallbacks.OnLobbyListGot(mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), title.c_str());
+        gCoopNetCallbacks.OnLobbyListGot(mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
     }
 
     return true;

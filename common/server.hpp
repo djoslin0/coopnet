@@ -26,13 +26,13 @@ class Server {
         Connection* ConnectionGet(uint64_t aUserId);
 
         Lobby* LobbyGet(uint64_t aLobbyId);
-        void LobbyListGet(Connection& aConnection, std::string aGame);
+        void LobbyListGet(Connection& aConnection, std::string aGame, std::string aPassword);
 
         void OnLobbyJoin(Lobby* aLobby, Connection* aConnection);
         void OnLobbyLeave(Lobby* aLobby, Connection* aConnection);
         void OnLobbyDestroy(Lobby* aLobby);
 
-        void LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aTitle, uint16_t aMaxConnections);
+        void LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword);
 };
 
 extern Server* gServer;
