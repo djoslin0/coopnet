@@ -21,6 +21,7 @@ enum MPacketType {
     MPACKET_LOBBY_LEFT,
     MPACKET_LOBBY_LIST_GET,
     MPACKET_LOBBY_LIST_GOT,
+    MPACKET_LOBBY_LIST_FINISH,
     MPACKET_PEER_SDP,
     MPACKET_PEER_CANDIDATE,
     MPACKET_PEER_FAILED,
@@ -86,6 +87,10 @@ typedef struct {
     uint16_t connections;
     uint16_t maxConnections;
 } MPacketLobbyListGotData;
+
+typedef struct {
+    uint8_t unused;
+} MPacketLobbyListFinishData;
 
 typedef struct {
     uint64_t lobbyId;
@@ -259,6 +264,17 @@ class MPacketLobbyListGot : public MPacketImpl<MPacketLobbyListGotData> {
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LIST_GOT,
             .stringCount = 4,
+            .sendType = MSEND_TYPE_SERVER
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketLobbyListFinish : public MPacketImpl<MPacketLobbyListFinishData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_LOBBY_LIST_FINISH,
+            .stringCount = 0,
             .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;

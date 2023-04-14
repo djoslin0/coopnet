@@ -178,6 +178,7 @@ void Server::LobbyListGet(Connection& aConnection, std::string aGame, std::strin
             it.second->mMode,
         }).Send(aConnection);
     }
+    MPacketLobbyListFinish({ 0 }).Send(aConnection);
 }
 
 void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {

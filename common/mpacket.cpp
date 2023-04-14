@@ -21,6 +21,7 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketLobbyLeft(),
     new MPacketLobbyListGet(),
     new MPacketLobbyListGot(),
+    new MPacketLobbyListFinish(),
     new MPacketPeerSdp(),
     new MPacketPeerCandidate(),
     new MPacketPeerFailed(),
@@ -378,6 +379,16 @@ bool MPacketLobbyListGot::Receive(Connection* connection) {
 
     if (gCoopNetCallbacks.OnLobbyListGot) {
         gCoopNetCallbacks.OnLobbyListGot(mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
+    }
+
+    return true;
+}
+
+bool MPacketLobbyListFinish::Receive(Connection* connection) {
+    LOG_INFO("MPACKET_LOBBY_LIST_FINISH received");
+
+    if (gCoopNetCallbacks.OnLobbyListFinish) {
+        gCoopNetCallbacks.OnLobbyListFinish();
     }
 
     return true;
