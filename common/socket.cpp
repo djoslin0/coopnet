@@ -15,7 +15,12 @@ int SocketInitialize(int aAf, int aType, int aProtocol) {
         }
     }
 
-    return socket(aAf, aType, aProtocol);
+    //
+    int sock = socket(aAf, aType, aProtocol);
+    int on = 1;
+    setsockopt(sock, SOL_SOCKET, SO_DONTLINGER, (char*)&on, sizeof(on));
+
+    return sock;
 }
 
 int SocketClose(int aSocket) {
