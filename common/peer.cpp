@@ -57,7 +57,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mCurrentState = JUICE_STATE_DISCONNECTED;
     mTimeout = clock_elapsed() + PEER_TIMEOUT;
 
-    juice_set_log_level(JUICE_LOG_LEVEL_VERBOSE);
+    juice_set_log_level(JUICE_LOG_LEVEL_ERROR);
 
     // Agent 1: Create agent
     juice_config_t config;
