@@ -308,7 +308,8 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyJoined::Receive(Connection* connection) {
-    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %" PRIu64 ", userId %" PRIu64 ", priority %u, ownerId %" PRIu64 "", mData.lobbyId, mData.userId, mData.priority, mData.ownerId);
+    LOG_INFO("MPACKET_LOBBY_JOINED received: lobbyId %" PRIu64 ", userId %" PRIu64 ", priority %u, ownerId %" PRIu64 ", destId %" PRIu64 "",
+        mData.lobbyId, mData.userId, mData.priority, mData.ownerId, mData.destId);
 
     if (mData.userId == gClient->mCurrentUserId) {
         gClient->mCurrentLobbyId = mData.lobbyId;
@@ -321,7 +322,7 @@ bool MPacketLobbyJoined::Receive(Connection* connection) {
     }
 
     if (gCoopNetCallbacks.OnLobbyJoined) {
-        gCoopNetCallbacks.OnLobbyJoined(mData.lobbyId, mData.userId, mData.ownerId);
+        gCoopNetCallbacks.OnLobbyJoined(mData.lobbyId, mData.userId, mData.ownerId, mData.destId);
     }
 
     return true;

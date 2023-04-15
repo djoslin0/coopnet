@@ -66,6 +66,7 @@ typedef struct {
     uint64_t lobbyId;
     uint64_t userId;
     uint64_t ownerId;
+    uint64_t destId;
     uint32_t priority;
 } MPacketLobbyJoinedData;
 

@@ -16,6 +16,7 @@ class Connection {
     public:
         bool mActive = false;
         uint64_t mId = 0;
+        uint64_t mDestinationId = 0;
         int mSocket = 0;
         struct sockaddr_in mAddress = { 0};
         Lobby* mLobby = nullptr;

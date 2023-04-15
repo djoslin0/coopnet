@@ -186,6 +186,7 @@ void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
         .lobbyId = aLobby->mId,
         .userId = aConnection->mId,
         .ownerId = aLobby->mOwner->mId,
+        .destId = aConnection->mDestinationId,
         .priority = aConnection->mPriority
     }).Send(*aLobby);
 
@@ -198,6 +199,7 @@ void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
             .lobbyId = aLobby->mId,
             .userId = it->mId,
             .ownerId = aLobby->mOwner->mId,
+            .destId = aConnection->mDestinationId,
             .priority = it->mPriority
         }).Send(*aConnection);
     }

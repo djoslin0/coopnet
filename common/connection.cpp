@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <string>
 #include <set>
+#include <functional>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -33,6 +34,12 @@ bool Connection::IsValid(Connection* connection) {
 void Connection::Begin() {
     // store info
     mActive = true;
+
+    // get destination id
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    getpeername(mSocket, (struct sockaddr*)&addr, &len);
+    mDestinationId = (uint64_t)addr.sin_addr.s_addr;
 
     // set socket to non-blocking mode
     SocketSetNonBlocking(mSocket);
