@@ -11,9 +11,7 @@ int main(int argc, char *argv[]) {
     }
 
     while (true) {
-        std::string input;
-        std::cin >> input;
-        std::cout << input;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     return 0;
 }
