@@ -24,6 +24,12 @@ StunTurnServer sTurnServers[] = {
         .password = "+xyFIcvUWkzknKsg",
         .port = 80,
     },
+    {
+        .host = "a.relay.metered.ca",
+        .username = "328688ecfeafe4b22a869001",
+        .password = "XNODwaZLrmd2mBOW",
+        .port = 80,
+    },
 };
 
 static void sOnLobbyJoin(Lobby* lobby, Connection* connection) { gServer->OnLobbyJoin(lobby, connection); }
