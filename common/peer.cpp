@@ -68,7 +68,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     config.stun_server_port = aClient->mStunServer.port;
 
     // TURN server example (use your own server in production)
-    //mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
+    mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
     if (!mTurnServers) {
         config.turn_servers = nullptr;
         config.turn_servers_count = 0;
