@@ -48,6 +48,9 @@ bool Client::Begin(std::string aHost, uint32_t aPort)
 
 void Client::Update() {
     if (!mConnection) { return; }
+    if (mUpdating) { return; }
+    mUpdating = true;
+
     mConnection->Receive();
 
     // update peer
@@ -82,6 +85,7 @@ void Client::Update() {
         }
         mEvents.clear();
     }
+    mUpdating = false;
 }
 
 void Client::Disconnect() {

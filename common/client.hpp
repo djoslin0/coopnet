@@ -15,6 +15,7 @@ class Client {
         uint64_t mCurrentUserId = 0;
         uint64_t mCurrentLobbyId = 0;
         uint32_t mCurrentPriority = 0;
+        bool mUpdating = false;
         Connection* mConnection = nullptr;
         std::vector<PeerEvent> mEvents;
         std::mutex mEventsMutex;
