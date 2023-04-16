@@ -36,6 +36,7 @@ CoopNetRc coopnet_shutdown(void) {
 CoopNetRc coopnet_update(void) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
     gClient->Update();
+    if (!gClient) { return COOPNET_DISCONNECTED; }
 
     if (gClient->mShutdown) {
         delete gClient;
