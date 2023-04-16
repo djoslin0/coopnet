@@ -15,6 +15,7 @@ class Connection {
 
     public:
         bool mActive = false;
+        bool mIntentionalDisconnect = false;
         uint64_t mId = 0;
         uint64_t mDestinationId = 0;
         int mSocket = 0;
@@ -26,6 +27,6 @@ class Connection {
         ~Connection();
         static bool IsValid(Connection* connection);
         void Begin();
-        void Disconnect();
+        void Disconnect(bool aIntentional);
         void Receive();
 };

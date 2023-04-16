@@ -8,7 +8,7 @@ Client* gClient = NULL;
 Client::~Client() {
     Disconnect();
     if (mConnection) {
-        mConnection->Disconnect();
+        mConnection->Disconnect(true);
         delete mConnection;
         mConnection = nullptr;
     }
@@ -100,7 +100,7 @@ void Client::Disconnect() {
     mShutdown = true;
     PeerEndAll();
     if (mConnection) {
-        mConnection->Disconnect();
+        mConnection->Disconnect(true);
         mConnection = nullptr;
     }
 }

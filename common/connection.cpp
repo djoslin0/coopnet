@@ -52,7 +52,7 @@ void Connection::Begin() {
     LOG_INFO("[%" PRIu64 "] Connection accepted: %s", mId, mAddressStr.c_str());
 }
 
-void Connection::Disconnect() {
+void Connection::Disconnect(bool aIntentional) {
     if (!mActive) { return; }
 
     if (mLobby) {
@@ -63,7 +63,7 @@ void Connection::Disconnect() {
     SocketClose(mSocket);
 
     if (gCoopNetCallbacks.OnDisconnected) {
-        gCoopNetCallbacks.OnDisconnected();
+        gCoopNetCallbacks.OnDisconnected(aIntentional);
     }
 }
 
@@ -82,11 +82,11 @@ void Connection::Receive() {
         return;
     } else if (ret == 0 || (rc == SOCKET_ECONNRESET)) {
         LOG_INFO("[%" PRIu64 "] Connection closed (%d, %d).", mId, ret, rc);
-        Disconnect();
+        Disconnect(false);
         return;
     } else if (ret < 0) {
         LOG_ERROR("[%" PRIu64 "] Error receiving data (%d)!", mId, rc);
-        Disconnect();
+        Disconnect(false);
         return;
     }
 

@@ -12,7 +12,7 @@
 
 std::thread sThreadRecv;
 
-static void sOnDisconnected(void) { exit(0); }
+static void sOnDisconnected(bool aIntentional) { exit(0); }
 
 static void sReceive(void) {
     while (coopnet_is_connected()) {
