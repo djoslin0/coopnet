@@ -93,7 +93,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     config.cb_gathering_done = sOnGatheringDone;
     config.cb_recv = sOnRecv;
     config.user_ptr = this;
-    //config.concurrency_mode = JUICE_CONCURRENCY_MODE_POLL;
+    config.concurrency_mode = JUICE_CONCURRENCY_MODE_POLL;
 
     mConnected = false;
     mAgent = juice_create(&config);
