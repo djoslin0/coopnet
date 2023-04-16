@@ -69,7 +69,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
 
     // TURN server example (use your own server in production)
     //mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
-    if (!mTurnServers || true) {
+    if (!mTurnServers) {
         config.turn_servers = nullptr;
         config.turn_servers_count = 0;
         LOG_ERROR("Failed to allocate turn servers");
