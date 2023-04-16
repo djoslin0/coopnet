@@ -3,6 +3,9 @@
 #include <thread>
 #include <map>
 #include <mutex>
+#include <random>
+#include <cstdint>
+#include <chrono>
 #include "socket.hpp"
 #include "connection.hpp"
 #include "lobby.hpp"
@@ -15,8 +18,8 @@ class Server {
         std::map<uint64_t, Connection*> mConnections;
         std::mutex mConnectionsMutex;
         std::map<uint64_t, Lobby*> mLobbies;
-        uint64_t mNextConnectionId = 1;
-        uint64_t mNextLobbyId = 1;
+        std::mt19937_64 mPrng;
+        std::uniform_int_distribution<uint64_t> mRng;
 
     public:
         bool Begin(uint32_t aPort);

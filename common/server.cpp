@@ -12,8 +12,8 @@ Server* gServer = NULL;
 
 StunTurnServer sStunServer = {
     .host = "stun.l.google.com",
-	.username = "",
-	.password = "",
+    .username = "",
+    .password = "",
     .port = 19302,
 };
 
@@ -94,8 +94,17 @@ void Server::Receive() {
     LOG_INFO("Waiting for connections...");
 
     while (true) {
+        // Use a PRNG to generate a random seed
+        mPrng = std::mt19937_64(std::chrono::steady_clock::now().time_since_epoch().count());
+
+        // Get random connection id
+        uint64_t connectionId = mRng(mPrng);
+        while (connectionId == 0 || mConnections.count(connectionId) > 0) {
+            connectionId = mRng(mPrng);
+        }
+
         // accept the incoming connection
-        Connection* connection = new Connection(mNextConnectionId++);
+        Connection* connection = new Connection(connectionId);
         socklen_t len = sizeof(struct sockaddr_in);
         connection->mSocket = accept(mSocket, (struct sockaddr *) &connection->mAddress, &len);
 
@@ -231,8 +240,14 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
         aConnection->mLobby->Leave(aConnection);
     }
 
+    // Get random lobby id
+    uint64_t lobbyId = mRng(mPrng);
+    while (lobbyId == 0 || mLobbies.count(lobbyId) > 0) {
+        lobbyId = mRng(mPrng);
+    }
+
     // create the new lobby
-    Lobby* lobby = new Lobby(aConnection, mNextLobbyId++, aGame, aVersion, aHostName, aMode, aMaxConnections, aPassword);
+    Lobby* lobby = new Lobby(aConnection, lobbyId, aGame, aVersion, aHostName, aMode, aMaxConnections, aPassword);
     mLobbies[lobby->mId] = lobby;
 
     LOG_INFO("[%" PRIu64 "] Lobby added, count: %" PRIu64 "", lobby->mId, (uint64_t)mLobbies.size());
