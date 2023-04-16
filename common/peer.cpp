@@ -11,7 +11,7 @@
 #include "logging.hpp"
 #include "utils.hpp"
 
-#define PEER_TIMEOUT 120.0f /* 120 seconds */
+#define PEER_TIMEOUT 45.0f /* 45 seconds */
 
 static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { ((Peer*)user_ptr)->OnCandidate(sdp); }
 static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { ((Peer*)user_ptr)->OnGatheringDone(); }

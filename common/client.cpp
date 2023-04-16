@@ -60,10 +60,19 @@ void Client::Update() {
         }
     }
 
-    // process queued data on main thread
+    // copy events for processing
+    std::vector<PeerEvent> mEventsCopy;
     {
         std::lock_guard<std::mutex> guard(mEventsMutex);
         for (auto& it : mEvents) {
+            mEventsCopy.push_back(it);
+        }
+        mEvents.clear();
+    }
+
+    // process queued data on main thread
+    {
+        for (auto& it : mEventsCopy) {
             Peer* peer = PeerGet(it.peerId);
 
             switch (it.type) {
@@ -83,7 +92,6 @@ void Client::Update() {
                     break;
             }
         }
-        mEvents.clear();
     }
     mUpdating = false;
 }
