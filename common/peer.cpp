@@ -11,7 +11,7 @@
 #include "logging.hpp"
 #include "utils.hpp"
 
-#define PEER_TIMEOUT 15.0f /* 15 seconds */
+#define PEER_TIMEOUT 120.0f /* 120 seconds */
 
 static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { ((Peer*)user_ptr)->OnCandidate(sdp); }
 static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { ((Peer*)user_ptr)->OnGatheringDone(); }
@@ -57,7 +57,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mCurrentState = JUICE_STATE_DISCONNECTED;
     mTimeout = clock_elapsed() + PEER_TIMEOUT;
 
-    juice_set_log_level(JUICE_LOG_LEVEL_ERROR);
+    juice_set_log_level(JUICE_LOG_LEVEL_INFO);
 
     // Agent 1: Create agent
     juice_config_t config;
