@@ -21,6 +21,11 @@ static void sReceive(void) {
     }
 }
 
+static uint64_t stru64(const char* s) {
+    char* end;
+    return strtoull(s, &end, 10);
+}
+
 int main(int argc, char const *argv[]) {
     // setup callbacks
     gCoopNetCallbacks.OnDisconnected = sOnDisconnected;
@@ -59,13 +64,13 @@ int main(int argc, char const *argv[]) {
             }
         } else if (words[0] == "join" || words[0] == "j") {
             if (words.size() == 2) {
-                coopnet_lobby_join((uint64_t)atoll(words[1].c_str()), "");
+                coopnet_lobby_join((uint64_t)stru64(words[1].c_str()), "");
             } else if (words.size() == 3) {
-                coopnet_lobby_join((uint64_t)atoll(words[1].c_str()), words[2].c_str());
+                coopnet_lobby_join((uint64_t)stru64(words[1].c_str()), words[2].c_str());
             }
         } else if (words[0] == "leave" || words[0] == "l") {
             if (words.size() == 2) {
-                coopnet_lobby_leave((uint64_t)atoll(words[1].c_str()));
+                coopnet_lobby_leave((uint64_t)stru64(words[1].c_str()));
             }
         } else if (words[0] == "list" || words[0] == "ls") {
             if (words.size() == 3) {
@@ -89,7 +94,7 @@ int main(int argc, char const *argv[]) {
             coopnet_shutdown();
         } else if (words[0] == "unpeer") {
             if (words.size() == 2) {
-                coopnet_unpeer((uint64_t)atoll(words[1].c_str()));
+                coopnet_unpeer((uint64_t)stru64(words[1].c_str()));
             }
         }
 
