@@ -35,7 +35,7 @@ Lobby::~Lobby() {
 enum MPacketErrorNumber Lobby::Join(Connection* aConnection, std::string& aPassword) {
     // sanity check
     if (!aConnection) { return MERR_LOBBY_JOIN_FAILED; }
-    if (aConnection->mLobby == this) { return MERR_LOBBY_JOIN_FAILED; }
+    if (aConnection->mLobby == this) { return MERR_NONE; }
 
     // leave older lobby
     if (aConnection->mLobby != nullptr) {

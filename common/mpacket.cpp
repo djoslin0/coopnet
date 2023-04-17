@@ -214,7 +214,7 @@ void MPacket::Process(Connection* connection, uint8_t* aData) {
         LOG_ERROR("Packet parse error!");
     } else {
         bool ret = packet->Receive(connection);
-        if (!ret) { LOG_ERROR("Packet receive error!"); }
+        if (!ret) { LOG_ERROR("Packet receive error %u!", header.packetType); }
     }
 }
 
