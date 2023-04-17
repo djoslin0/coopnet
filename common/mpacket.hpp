@@ -27,6 +27,7 @@ enum MPacketType {
     MPACKET_PEER_FAILED,
     MPACKET_STUN_TURN,
     MPACKET_ERROR,
+    MPACKET_LOBBY_UPDATE,
     MPACKET_MAX,
 };
 
@@ -116,6 +117,10 @@ typedef struct {
 typedef struct {
     uint16_t errorNumber;
 } MPacketErrorData;
+
+typedef struct {
+    uint64_t lobbyId;
+} MPacketLobbyUpdateData;
 
 #pragma pack()
 
@@ -336,3 +341,13 @@ class MPacketError : public MPacketImpl<MPacketErrorData> {
         bool Receive(Connection* connection) override;
 };
 
+class MPacketLobbyUpdate : public MPacketImpl<MPacketLobbyUpdateData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_LOBBY_UPDATE,
+            .stringCount = 4,
+            .sendType = MSEND_TYPE_CLIENT
+        };}
+        bool Receive(Connection* connection) override;
+};

@@ -265,3 +265,20 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
 
     lobby->Join(aConnection, aPassword);
 }
+
+void Server::LobbyUpdate(Connection *aConnection, uint64_t aLobbyId, std::string &aGame, std::string &aVersion, std::string &aHostName, std::string &aMode) {
+    Lobby* lobby = LobbyGet(aLobbyId);
+    if (!lobby) {
+        LOG_ERROR("Could not find lobby to update: %" PRIu64 "", aLobbyId);
+        return;
+    }
+    if (lobby->mOwner != aConnection) {
+        LOG_ERROR("Could not update lobby, was not the owner: %" PRIu64 "", aLobbyId);
+        return;
+    }
+
+    lobby->mGame = aGame;
+    lobby->mVersion = aVersion;
+    lobby->mHostName = aHostName;
+    lobby->mMode = aMode;
+}

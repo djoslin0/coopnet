@@ -36,6 +36,7 @@ class Server {
         void OnLobbyDestroy(Lobby* aLobby);
 
         void LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword);
+        void LobbyUpdate(Connection* aConnection, uint64_t aLobbyId, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode);
 };
 
 extern Server* gServer;

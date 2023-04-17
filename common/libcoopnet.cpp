@@ -51,6 +51,18 @@ CoopNetRc coopnet_lobby_create(const char* aGame, const char* aVersion, const ch
     return COOPNET_OK;
 }
 
+CoopNetRc coopnet_lobby_update(uint64_t aLobbyId, const char *aGame, const char *aVersion, const char *aHostName, const char *aMode) {
+    if (!gClient) { return COOPNET_DISCONNECTED; }
+    gClient->LobbyUpdate(aLobbyId, aGame, aVersion, aHostName, aMode);
+    return COOPNET_OK;
+}
+
+CoopNetRc coopnet_lobby_update(uint64_t aLobbyId, const char* aGame, const char* aVersion, const char* aHostName, const char* aMode, uint16_t aMaxConnections, const char* aPassword) {
+    if (!gClient) { return COOPNET_DISCONNECTED; }
+    gClient->LobbyUpdate(aLobbyId, aGame, aVersion, aHostName, aMode);
+    return COOPNET_OK;
+}
+
 CoopNetRc coopnet_lobby_join(uint64_t aLobbyId, const char* aPassword) {
     if (!gClient) { return COOPNET_DISCONNECTED; }
     gClient->LobbyJoin(aLobbyId, aPassword);

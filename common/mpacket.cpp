@@ -27,6 +27,7 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketPeerFailed(),
     new MPacketStunTurn(),
     new MPacketError(),
+    new MPacketLobbyUpdate(),
 };
 
 void MPacket::Send(Connection& connection) {
@@ -518,5 +519,18 @@ bool MPacketError::Receive(Connection* connection) {
     if (gCoopNetCallbacks.OnError) {
         gCoopNetCallbacks.OnError((enum MPacketErrorNumber)mData.errorNumber);
     }
+    return true;
+}
+
+bool MPacketLobbyUpdate::Receive(Connection* connection) {
+    std::string& game = mStringData[0];
+    std::string& version = mStringData[1];
+    std::string& hostName = mStringData[2];
+    std::string& mode = mStringData[3];
+
+    LOG_INFO("MPACKET_LOBBY_UPDATE received: lobbyId %" PRIu64 ", game '%s', version '%s', hostName '%s', mode '%s'",
+        mData.lobbyId, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
+    gServer->LobbyUpdate(connection, mData.lobbyId, game, version, hostName, mode);
+
     return true;
 }

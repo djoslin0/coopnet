@@ -57,7 +57,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mCurrentState = JUICE_STATE_DISCONNECTED;
     mTimeout = clock_elapsed() + PEER_TIMEOUT;
 
-    juice_set_log_level(JUICE_LOG_LEVEL_INFO);
+    juice_set_log_level(JUICE_LOG_LEVEL_WARN);
 
     // Agent 1: Create agent
     juice_config_t config;
@@ -142,7 +142,7 @@ void Peer::SendSdp() {
 }
 
 bool Peer::Send(const uint8_t* aData, size_t aDataLength) {
-    LOG_INFO("Peer sending to (%" PRIu64 ")\n", mId);
+    //LOG_INFO("Peer sending to (%" PRIu64 ")\n", mId);
     juice_send(mAgent, (const char*)aData, aDataLength);
     return true;
 }
@@ -200,7 +200,7 @@ void Peer::OnGatheringDone() {
 }
 
 void Peer::OnRecv(const uint8_t* aData, size_t aSize) {
-    LOG_INFO("Recv (%" PRIu64 "), size %" PRIu64 "", mId, (uint64_t)aSize);
+    //LOG_INFO("Recv (%" PRIu64 "), size %" PRIu64 "", mId, (uint64_t)aSize);
 
     if (mConnected && gCoopNetCallbacks.OnReceive) {
         gCoopNetCallbacks.OnReceive(mId, aData, (uint64_t)aSize);

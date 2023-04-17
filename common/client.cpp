@@ -161,6 +161,13 @@ void Client::LobbyCreate(std::string aGame, std::string aVersion, std::string aH
         ).Send(*mConnection);
 }
 
+void Client::LobbyUpdate(uint64_t aLobbyId, std::string aGame, std::string aVersion, std::string aHostName, std::string aMode) {
+    MPacketLobbyUpdate(
+        { .lobbyId = aLobbyId },
+        { aGame, aVersion, aHostName, aMode }
+        ).Send(*mConnection);
+}
+
 void Client::LobbyJoin(uint64_t aLobbyId, std::string aPassword) {
     MPacketLobbyJoin(
         { .lobbyId = aLobbyId },
