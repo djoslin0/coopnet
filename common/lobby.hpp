@@ -23,8 +23,9 @@ class Lobby {
         std::string mHostName;
         std::string mMode;
         std::string mPassword;
+        std::string mDescription;
 
-        Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword);
+        Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword, std::string& aDescription);
         ~Lobby();
 
         enum MPacketErrorNumber Join(Connection* aConnection, std::string& aPassword);

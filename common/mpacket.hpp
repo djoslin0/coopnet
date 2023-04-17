@@ -192,7 +192,7 @@ class MPacketLobbyCreate : public MPacketImpl<MPacketLobbyCreateData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_CREATE,
-            .stringCount = 5,
+            .stringCount = 6,
             .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
@@ -269,7 +269,7 @@ class MPacketLobbyListGot : public MPacketImpl<MPacketLobbyListGotData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_LIST_GOT,
-            .stringCount = 4,
+            .stringCount = 5,
             .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
@@ -346,7 +346,7 @@ class MPacketLobbyUpdate : public MPacketImpl<MPacketLobbyUpdateData> {
         using MPacketImpl::MPacketImpl;
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_LOBBY_UPDATE,
-            .stringCount = 4,
+            .stringCount = 5,
             .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;

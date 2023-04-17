@@ -55,12 +55,14 @@ int main(int argc, char const *argv[]) {
         }
 
         if (words[0] == "create" || words[0] == "c") {
-            if (words.size() == 6) {
-                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), words[4].c_str(), (uint16_t)atoi(words[5].c_str()), "");
+            if (words.size() == 2) {
+                coopnet_lobby_create("sm64ex-coop", "beta 34", "Host's Name", "Super Mario 64", 16, words[1].c_str(), "description!");
+            } else if (words.size() == 6) {
+                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), words[4].c_str(), (uint16_t)atoi(words[5].c_str()), "", "description!");
             } else if (words.size() == 7) {
-                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), words[4].c_str(), (uint16_t)atoi(words[5].c_str()), words[6].c_str());
+                coopnet_lobby_create(words[1].c_str(), words[2].c_str(), words[3].c_str(), words[4].c_str(), (uint16_t)atoi(words[5].c_str()), words[6].c_str(), "description!");
             } else {
-                coopnet_lobby_create("sm64ex-coop", "beta 34", "Host's Name", "Super Mario 64", 16, "");
+                coopnet_lobby_create("sm64ex-coop", "beta 34", "Host's Name", "Super Mario 64", 16, "", "description!");
             }
         } else if (words[0] == "join" || words[0] == "j") {
             if (words.size() == 2) {
@@ -76,7 +78,7 @@ int main(int argc, char const *argv[]) {
             if (words.size() == 3) {
                 coopnet_lobby_list_get(words[1].c_str(), words[2].c_str());
             } else if (words.size() == 2) {
-                coopnet_lobby_list_get(words[1].c_str(), "");
+                coopnet_lobby_list_get("sm64ex-coop", words[1].c_str());
             } else {
                 coopnet_lobby_list_get("sm64ex-coop", "");
             }

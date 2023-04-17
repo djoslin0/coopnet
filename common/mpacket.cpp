@@ -259,24 +259,25 @@ bool MPacketJoined::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyCreate::Receive(Connection* connection) {
-    std::string& game = mStringData[0];
-    std::string& version = mStringData[1];
-    std::string& hostName = mStringData[2];
-    std::string& mode = mStringData[3];
-    std::string& password = mStringData[4];
+    std::string game        = mStringData[0].substr(0, 32);
+    std::string version     = mStringData[1].substr(0, 32);
+    std::string hostName    = mStringData[2].substr(0, 32);
+    std::string mode        = mStringData[3].substr(0, 32);
+    std::string password    = mStringData[4].substr(0, 64);
+    std::string description = mStringData[5].substr(0, 256);
 
     LOG_INFO("MPACKET_LOBBY_CREATE received: game '%s', version '%s', hostName '%s', mode '%s', maxconnections %u, password '%s'",
         game.c_str(), version.c_str(), hostName.c_str(), mode.c_str(), mData.maxConnections, password.c_str());
-    gServer->LobbyCreate(connection, game, version, hostName, mode, mData.maxConnections, password);
+    gServer->LobbyCreate(connection, game, version, hostName, mode, mData.maxConnections, password, description);
 
     return true;
 }
 
 bool MPacketLobbyCreated::Receive(Connection* connection) {
-    std::string& game = mStringData[0];
-    std::string& version = mStringData[1];
-    std::string& hostName = mStringData[2];
-    std::string& mode = mStringData[3];
+    std::string game     = mStringData[0].substr(0, 32);
+    std::string version  = mStringData[1].substr(0, 32);
+    std::string hostName = mStringData[2].substr(0, 32);
+    std::string mode     = mStringData[3].substr(0, 32);
 
     LOG_INFO("MPACKET_LOBBY_CREATED received: lobbyId %" PRIu64 ", game '%s', version '%s', hostName '%s', mode '%s', maxConnections %" PRIu64 "",
         mData.lobbyId, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str(), mData.maxConnections);
@@ -291,7 +292,7 @@ bool MPacketLobbyCreated::Receive(Connection* connection) {
 bool MPacketLobbyJoin::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_JOIN received: lobbyId %" PRIu64 "", mData.lobbyId);
 
-    std::string& password = mStringData[0];
+    std::string password = mStringData[0].substr(0, 64);
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (!lobby) {
@@ -364,23 +365,24 @@ bool MPacketLobbyLeft::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyListGet::Receive(Connection* connection) {
-    std::string& game = mStringData[0];
-    std::string& password = mStringData[1];
+    std::string game     = mStringData[0].substr(0, 32);
+    std::string password = mStringData[1].substr(0, 64);
     LOG_INFO("MPACKET_LOBBY_LIST_GET received: game '%s'", game.c_str());
     gServer->LobbyListGet(*connection, game, password);
     return true;
 }
 
 bool MPacketLobbyListGot::Receive(Connection* connection) {
-    std::string& game = mStringData[0];
-    std::string& version = mStringData[1];
-    std::string& hostName = mStringData[2];
-    std::string& mode = mStringData[3];
+    std::string game        = mStringData[0].substr(0, 32);
+    std::string version     = mStringData[1].substr(0, 32);
+    std::string hostName    = mStringData[2].substr(0, 32);
+    std::string mode        = mStringData[3].substr(0, 32);
+    std::string description = mStringData[4].substr(0, 256);
     LOG_INFO("MPACKET_LOBBY_LIST_GOT received: lobbyId %" PRIu64 ", ownerId %" PRIu64 ", connections %u/%u, game '%s', version '%s', hostname '%s', mode '%s'",
         mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
 
     if (gCoopNetCallbacks.OnLobbyListGot) {
-        gCoopNetCallbacks.OnLobbyListGot(mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
+        gCoopNetCallbacks.OnLobbyListGot(mData.lobbyId, mData.ownerId, mData.connections, mData.maxConnections, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str(), description.c_str());
     }
 
     return true;
@@ -494,9 +496,9 @@ bool MPacketPeerFailed::Receive(Connection *connection) {
 }
 
 bool MPacketStunTurn::Receive(Connection* connection) {
-    std::string& host = mStringData[0];
-    std::string& username = mStringData[1];
-    std::string& password = mStringData[2];
+    std::string host     = mStringData[0];
+    std::string username = mStringData[1];
+    std::string password = mStringData[2];
     LOG_INFO("MPACKET_STUN_TURN received: isStun %u, host '%s', port %u, username '%s', password '%s'", mData.isStun, host.c_str(), mData.port, username.c_str(), password.c_str());
 
     if (mData.isStun) {
@@ -523,14 +525,15 @@ bool MPacketError::Receive(Connection* connection) {
 }
 
 bool MPacketLobbyUpdate::Receive(Connection* connection) {
-    std::string& game = mStringData[0];
-    std::string& version = mStringData[1];
-    std::string& hostName = mStringData[2];
-    std::string& mode = mStringData[3];
+    std::string game        = mStringData[0].substr(0, 32);
+    std::string version     = mStringData[1].substr(0, 32);
+    std::string hostName    = mStringData[2].substr(0, 32);
+    std::string mode        = mStringData[3].substr(0, 32);
+    std::string description = mStringData[4].substr(0, 256);
 
     LOG_INFO("MPACKET_LOBBY_UPDATE received: lobbyId %" PRIu64 ", game '%s', version '%s', hostName '%s', mode '%s'",
         mData.lobbyId, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
-    gServer->LobbyUpdate(connection, mData.lobbyId, game, version, hostName, mode);
+    gServer->LobbyUpdate(connection, mData.lobbyId, game, version, hostName, mode, description);
 
     return true;
 }

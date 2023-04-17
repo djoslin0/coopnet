@@ -11,7 +11,7 @@ void (*gOnLobbyJoin)(Lobby* lobby, Connection* connection) = nullptr;
 void (*gOnLobbyLeave)(Lobby* lobby, Connection* connection) = nullptr;
 void (*gOnLobbyDestroy)(Lobby* lobby) = nullptr;
 
-Lobby::Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword) {
+Lobby::Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword, std::string& aDescription) {
     mOwner = aOwner;
     mId = aId;
     mGame = aGame;
@@ -20,6 +20,7 @@ Lobby::Lobby(Connection* aOwner, uint64_t aId, std::string& aGame, std::string& 
     mMode = aMode;
     mMaxConnections = aMaxConnections;
     mPassword = aPassword;
+    mDescription = aDescription;
 }
 
 Lobby::~Lobby() {

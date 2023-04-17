@@ -154,24 +154,24 @@ bool Client::PeerSendTo(uint64_t aPeerId, const uint8_t* aData, size_t aDataLeng
     return peer->Send(aData, aDataLength);
 }
 
-void Client::LobbyCreate(std::string aGame, std::string aVersion, std::string aHostName, std::string aMode, uint16_t aMaxConnections, std::string aPassword) {
+void Client::LobbyCreate(std::string aGame, std::string aVersion, std::string aHostName, std::string aMode, uint16_t aMaxConnections, std::string aPassword, std::string aDescription) {
     MPacketLobbyCreate(
         { .maxConnections = aMaxConnections },
-        { aGame, aVersion, aHostName, aMode, aPassword }
+        { aGame.substr(0, 32), aVersion.substr(0, 32), aHostName.substr(0, 32), aMode.substr(0, 32), aPassword.substr(0, 64), aDescription.substr(0, 256) }
         ).Send(*mConnection);
 }
 
-void Client::LobbyUpdate(uint64_t aLobbyId, std::string aGame, std::string aVersion, std::string aHostName, std::string aMode) {
+void Client::LobbyUpdate(uint64_t aLobbyId, std::string aGame, std::string aVersion, std::string aHostName, std::string aMode, std::string aDescription) {
     MPacketLobbyUpdate(
         { .lobbyId = aLobbyId },
-        { aGame, aVersion, aHostName, aMode }
+        { aGame.substr(0, 32), aVersion.substr(0, 32), aHostName.substr(0, 32), aMode.substr(0, 32), aDescription.substr(0, 256) }
         ).Send(*mConnection);
 }
 
 void Client::LobbyJoin(uint64_t aLobbyId, std::string aPassword) {
     MPacketLobbyJoin(
         { .lobbyId = aLobbyId },
-        { aPassword }
+        { aPassword.substr(0, 64) }
         ).Send(*mConnection);
 }
 
@@ -184,6 +184,6 @@ void Client::LobbyLeave(uint64_t aLobbyId) {
 void Client::LobbyListGet(std::string aGame, std::string aPassword) {
     MPacketLobbyListGet(
         {},
-        { aGame, aPassword }
+        { aGame.substr(0, 32), aPassword.substr(0, 64) }
         ).Send(*mConnection);
 }

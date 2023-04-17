@@ -193,6 +193,7 @@ void Server::LobbyListGet(Connection& aConnection, std::string aGame, std::strin
             it.second->mVersion,
             it.second->mHostName,
             it.second->mMode,
+            it.second->mDescription,
         }).Send(aConnection);
     }
     MPacketLobbyListFinish({ 0 }).Send(aConnection);
@@ -234,7 +235,7 @@ void Server::OnLobbyDestroy(Lobby* aLobby) {
     LOG_INFO("[%" PRIu64 "] Lobby removed, count: %" PRIu64 "", aLobby->mId, (uint64_t)mLobbies.size());
 }
 
-void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword) {
+void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword, std::string &aDescription) {
     // check if this connection already has a lobby
     if (aConnection->mLobby) {
         aConnection->mLobby->Leave(aConnection);
@@ -247,7 +248,16 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
     }
 
     // create the new lobby
-    Lobby* lobby = new Lobby(aConnection, lobbyId, aGame, aVersion, aHostName, aMode, aMaxConnections, aPassword);
+    Lobby* lobby = new Lobby(aConnection,
+        lobbyId,
+        aGame,
+        aVersion,
+        aHostName,
+        aMode,
+        aMaxConnections,
+        aPassword,
+        aDescription);
+
     mLobbies[lobby->mId] = lobby;
 
     LOG_INFO("[%" PRIu64 "] Lobby added, count: %" PRIu64 "", lobby->mId, (uint64_t)mLobbies.size());
@@ -260,13 +270,13 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
         lobby->mGame,
         lobby->mVersion,
         lobby->mHostName,
-        lobby->mMode,
+        lobby->mMode
     }).Send(*aConnection);
 
     lobby->Join(aConnection, aPassword);
 }
 
-void Server::LobbyUpdate(Connection *aConnection, uint64_t aLobbyId, std::string &aGame, std::string &aVersion, std::string &aHostName, std::string &aMode) {
+void Server::LobbyUpdate(Connection *aConnection, uint64_t aLobbyId, std::string &aGame, std::string &aVersion, std::string &aHostName, std::string &aMode, std::string &aDescription) {
     Lobby* lobby = LobbyGet(aLobbyId);
     if (!lobby) {
         LOG_ERROR("Could not find lobby to update: %" PRIu64 "", aLobbyId);
@@ -277,8 +287,9 @@ void Server::LobbyUpdate(Connection *aConnection, uint64_t aLobbyId, std::string
         return;
     }
 
-    lobby->mGame = aGame;
-    lobby->mVersion = aVersion;
-    lobby->mHostName = aHostName;
-    lobby->mMode = aMode;
+    lobby->mGame = aGame.substr(0, 32);
+    lobby->mVersion = aVersion.substr(0, 32);
+    lobby->mHostName = aHostName.substr(0, 32);
+    lobby->mMode = aMode.substr(0, 32);
+    lobby->mDescription = aDescription.substr(0, 256);
 }
