@@ -45,7 +45,7 @@ void MPacket::Send(Connection& connection) {
     // setup packet header
     MPacketImplSettings impl = GetImplSettings();
     MPacketHeader pHeader = {
-        .packetType = impl.packetType,
+        .packetType = static_cast<uint16_t>(impl.packetType),
         .dataSize = mVoidDataSize,
         .stringSize = stringSize
     };

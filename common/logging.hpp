@@ -2,9 +2,9 @@
 
 #include <string>
 #include <cinttypes>
-#include <stdio.h>
+#include <cstdio>
 #include <time.h>
-#include <string.h>
+#include <cstring>
 
 static void _debuglog_print_timestamp(void) {
     time_t ltime = time(NULL);

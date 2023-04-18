@@ -22,7 +22,7 @@ ifeq ($(OS),Windows_NT)
     LIB_DIR := lib/win64
   else
     LIB_DIR := lib/win32
-	CXXFLAGS += -Wno-error=format
+    CXXFLAGS += -Wno-error=format
   endif
 else
   LIB_DIR := lib/linux
@@ -43,6 +43,7 @@ lib: $(CLIENT_OBJ) | $(BIN_DIR)
 
 bin/o/%.o: %.cpp | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+#	clang-tidy $< --checks="bugprone-*,-bugprone-unused-return-value,cert-*,cppcoreguidelines-*,hicpp-*,misc-*,performance-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-type-vararg,-misc-unused-parameters,-hicpp-vararg,-hicpp-uppercase-literal-suffix" -- $(INCLUDES)
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)

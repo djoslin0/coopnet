@@ -1,6 +1,6 @@
 #include <stdexcept>
 #include <string>
-#include <time.h>
+#include <ctime>
 #include "socket.hpp"
 
 // Convert a domain name to an in_addr using gethostbyname
@@ -9,7 +9,7 @@ in_addr_t GetAddrFromDomain(const std::string& domain) {
     if (he == nullptr) {
         he = gethostbyname("127.0.0.1");
     }
-    struct in_addr** addr_list = reinterpret_cast<in_addr**>(he->h_addr_list);
+    auto addr_list = reinterpret_cast<in_addr**>(he->h_addr_list);
     return addr_list[0]->s_addr;
 }
 
@@ -29,13 +29,13 @@ static uint64_t clock_elapsed_ns(void) {
     static bool sClockInitialized = false;
     static uint64_t clock_start_ns;
     if (!sClockInitialized) {
-        struct timespec clock_start;
+        struct timespec clock_start = { 0 };
         _clock_gettime(&clock_start);
         clock_start_ns = ((uint64_t)clock_start.tv_sec) * 1000000000 + ((uint64_t)clock_start.tv_nsec);
         sClockInitialized = true;
     }
 
-    struct timespec clock_current;
+    struct timespec clock_current = { 0 };
     _clock_gettime(&clock_current);
 
     uint64_t clock_current_ns = ((uint64_t)clock_current.tv_sec) * 1000000000 + ((uint64_t)clock_current.tv_nsec);

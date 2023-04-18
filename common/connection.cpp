@@ -36,7 +36,7 @@ void Connection::Begin() {
     mActive = true;
 
     // get destination id
-    struct sockaddr_in addr;
+    struct sockaddr_in addr = { 0 };
     socklen_t len = sizeof(addr);
     getpeername(mSocket, (struct sockaddr*)&addr, &len);
     mDestinationId = (uint64_t)addr.sin_addr.s_addr;

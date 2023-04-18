@@ -1,8 +1,8 @@
 #include <map>
 #include <vector>
 #include <mutex>
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 #include <unistd.h>
 #include "libcoopnet.h"
 #include "peer.hpp"
@@ -13,8 +13,8 @@
 
 #define PEER_TIMEOUT 45.0f /* 45 seconds */
 
-static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { ((Peer*)user_ptr)->OnCandidate(sdp); }
-static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { ((Peer*)user_ptr)->OnGatheringDone(); }
+static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { reinterpret_cast<Peer*>(user_ptr)->OnCandidate(sdp); }
+static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { reinterpret_cast<Peer*>(user_ptr)->OnGatheringDone(); }
 
 static void sOnStateChanged(juice_agent_t *agent, juice_state_t state, void *user_ptr) {
     Peer* peer = (Peer*)user_ptr;

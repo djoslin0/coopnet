@@ -27,8 +27,12 @@ Lobby::~Lobby() {
     LOG_INFO("Destroying lobby %" PRIu64 "", mId);
 
     for (auto& it : mConnections) {
-        this->Leave(it);
+        if (!it) { continue; }
+        if (it->mLobby != this) { continue; }
+        if (gOnLobbyLeave) { gOnLobbyLeave(this, it); }
+        it->mLobby = nullptr;
     }
+    mConnections.clear();
 
     if (gOnLobbyDestroy) { gOnLobbyDestroy(this); }
 }

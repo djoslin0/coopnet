@@ -48,7 +48,7 @@ int SocketClose(int aSocket) {
 void SocketSetNonBlocking(int aSocket) {
     // set socket to non-blocking mode
     int flags = fcntl(aSocket, F_GETFL, 0);
-    fcntl(aSocket, F_SETFL, flags | O_NONBLOCK);
+    fcntl(aSocket, F_SETFL, ((unsigned int)flags) | O_NONBLOCK);
 }
 
 #endif

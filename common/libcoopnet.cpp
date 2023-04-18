@@ -1,5 +1,4 @@
 #include "client.hpp"
-#include <stdbool.h>
 #include "libcoopnet.h"
 
 CoopNetCallbacks gCoopNetCallbacks = { 0 };
