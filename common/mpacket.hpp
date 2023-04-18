@@ -116,6 +116,7 @@ typedef struct {
 
 typedef struct {
     uint16_t errorNumber;
+    uint64_t tag;
 } MPacketErrorData;
 
 typedef struct {

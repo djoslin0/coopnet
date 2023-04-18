@@ -299,13 +299,13 @@ bool MPacketLobbyJoin::Receive(Connection* connection) {
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (!lobby) {
-        MPacketError({ .errorNumber = MERR_LOBBY_NOT_FOUND }).Send(*connection);
+        MPacketError({ .errorNumber = MERR_LOBBY_NOT_FOUND, .tag = mData.lobbyId }).Send(*connection);
         return false;
     }
 
     enum MPacketErrorNumber rc = lobby->Join(connection, password);
     if (rc != MERR_NONE) {
-        MPacketError({ .errorNumber = (uint16_t)rc }).Send(*connection);
+        MPacketError({ .errorNumber = (uint16_t)rc, .tag = mData.lobbyId }).Send(*connection);
         return false;
     }
 
@@ -338,7 +338,7 @@ bool MPacketLobbyLeave::Receive(Connection* connection) {
 
     Lobby* lobby = gServer->LobbyGet(mData.lobbyId);
     if (!lobby) {
-        MPacketError({ .errorNumber = MERR_LOBBY_NOT_FOUND }).Send(*connection);
+        MPacketError({ .errorNumber = MERR_LOBBY_NOT_FOUND, .tag = mData.lobbyId }).Send(*connection);
         return false;
     }
 
@@ -491,6 +491,9 @@ bool MPacketPeerFailed::Receive(Connection *connection) {
         LOG_ERROR("Peer failed, but the priority was incorrect");
         return false;
     }
+
+    // inform them
+    MPacketError({ .errorNumber = MERR_PEER_FAILED, .tag = connection->mId }).Send(*peer);
 
     // kick them
     connection->mLobby->Leave(peer);
