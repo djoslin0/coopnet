@@ -245,6 +245,9 @@ void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, 
 bool MPacketJoined::Receive(Connection* connection) {
     LOG_INFO("MPACKET_JOINED received: userID %" PRIu64 ", version %u", mData.userId, mData.version);
     if (mData.version != MPACKET_PROTOCOL_VERSION) {
+        if (gCoopNetCallbacks.OnError) {
+            gCoopNetCallbacks.OnError(MERR_COOPNET_VERSION);
+        }
         gClient->Disconnect();
         return false;
     }
