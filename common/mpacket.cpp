@@ -246,7 +246,7 @@ bool MPacketJoined::Receive(Connection* connection) {
     LOG_INFO("MPACKET_JOINED received: userID %" PRIu64 ", version %u", mData.userId, mData.version);
     if (mData.version != MPACKET_PROTOCOL_VERSION) {
         if (gCoopNetCallbacks.OnError) {
-            gCoopNetCallbacks.OnError(MERR_COOPNET_VERSION);
+            gCoopNetCallbacks.OnError(MERR_COOPNET_VERSION, mData.version);
         }
         gClient->Disconnect();
         return false;
@@ -525,7 +525,7 @@ bool MPacketStunTurn::Receive(Connection* connection) {
 bool MPacketError::Receive(Connection* connection) {
     LOG_INFO("MPACKET_ERROR received: errno %u", mData.errorNumber);
     if (gCoopNetCallbacks.OnError) {
-        gCoopNetCallbacks.OnError((enum MPacketErrorNumber)mData.errorNumber);
+        gCoopNetCallbacks.OnError((enum MPacketErrorNumber)mData.errorNumber, mData.tag);
     }
     return true;
 }
