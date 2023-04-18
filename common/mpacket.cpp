@@ -83,7 +83,7 @@ void MPacket::Send(Connection& connection) {
         d += sizeof(uint16_t);
 
         // fill string
-        for (uint8_t i = 0; i < slength; i++) {
+        for (uint16_t i = 0; i < slength; i++) {
             *d = *c;
             d++;
             c++;
@@ -481,7 +481,7 @@ bool MPacketPeerFailed::Receive(Connection *connection) {
 
     // make sure peer is still in this lobby
     Connection* peer = gServer->ConnectionGet(mData.peerId);
-    if (!peer || peer->mLobby->mId != mData.lobbyId) {
+    if (!peer || !peer->mLobby || peer->mLobby->mId != mData.lobbyId) {
         LOG_ERROR("Peer failed, but the peer of the one that saw the failure is no longer in the lobby");
         return false;
     }
