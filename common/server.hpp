@@ -37,6 +37,9 @@ class Server {
 
         void LobbyCreate(Connection* aConnection, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, uint16_t aMaxConnections, std::string& aPassword, std::string& aDescription);
         void LobbyUpdate(Connection* aConnection, uint64_t aLobbyId, std::string& aGame, std::string& aVersion, std::string& aHostName, std::string& aMode, std::string& aDescription);
+
+        int ConnectionCount();
+        int LobbyCount();
 };
 
 extern Server* gServer;

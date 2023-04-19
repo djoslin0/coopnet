@@ -154,6 +154,7 @@ void Server::Update() {
 
         for (auto it = mConnections.begin(); it != mConnections.end(); ) {
             Connection* connection = it->second;
+            if (connection == nullptr) { continue; }
             // erase the connection if it's inactive, otherwise receive packets
             if (!connection->mActive) {
                 mConnections.erase(it++);
@@ -292,4 +293,12 @@ void Server::LobbyUpdate(Connection *aConnection, uint64_t aLobbyId, std::string
     lobby->mHostName = aHostName.substr(0, 32);
     lobby->mMode = aMode.substr(0, 32);
     lobby->mDescription = aDescription.substr(0, 256);
+}
+
+int Server::ConnectionCount() {
+    return mConnections.size();
+}
+
+int Server::LobbyCount() {
+    return mLobbies.size();
 }
