@@ -91,7 +91,7 @@ void MPacket::Send(Connection& connection) {
     }
 
     // send data buffer
-    size_t sent = sendto(connection.mSocket, (char*)&data[0], dataSize, MSG_NOSIGNAL, (const sockaddr*)&connection.mAddress, sizeof(struct sockaddr_in));
+    int sent = sendto(connection.mSocket, (char*)&data[0], dataSize, MSG_NOSIGNAL, (const sockaddr*)&connection.mAddress, sizeof(struct sockaddr_in));
     int rc = SOCKET_LAST_ERROR;
 
     // debug print packet
@@ -110,8 +110,8 @@ void MPacket::Send(Connection& connection) {
     }
 
     // check for data size error
-    if (sent != dataSize) {
-        LOG_ERROR("Error sending data, did not send all bytes (%" PRIu64 " != %" PRIu64 ")!", (uint64_t)sent, (uint64_t)dataSize);
+    if (sent != (int)dataSize) {
+        LOG_ERROR("Error sending data, did not send all bytes (%d != %" PRIu64 ")!", sent, (uint64_t)dataSize);
     }
 }
 
