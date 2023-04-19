@@ -68,25 +68,27 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     config.stun_server_port = aClient->mStunServer.port;
 
     // TURN server example (use your own server in production)
-    mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
-    if (!mTurnServers) {
-        config.turn_servers = nullptr;
-        config.turn_servers_count = 0;
-        LOG_ERROR("Failed to allocate turn servers");
-    } else {
-        for (uint32_t i = 0; i < aClient->mTurnServers.size(); i++) {
-            StunTurnServer* turn = &aClient->mTurnServers[i];
-            mTurnServers[i].host = turn->host.c_str();
-            mTurnServers[i].port = turn->port;
-            mTurnServers[i].username = turn->username.c_str();
-            mTurnServers[i].password = turn->password.c_str();
+    if (gClient->mCurrentUserId < mId) {
+        mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
+        if (!mTurnServers) {
+            config.turn_servers = nullptr;
+            config.turn_servers_count = 0;
+            LOG_ERROR("Failed to allocate turn servers");
+        } else {
+            for (uint32_t i = 0; i < aClient->mTurnServers.size(); i++) {
+                StunTurnServer* turn = &aClient->mTurnServers[i];
+                mTurnServers[i].host = turn->host.c_str();
+                mTurnServers[i].port = turn->port;
+                mTurnServers[i].username = turn->username.c_str();
+                mTurnServers[i].password = turn->password.c_str();
+            }
+            config.turn_servers = mTurnServers;
+            config.turn_servers_count = aClient->mTurnServers.size();
         }
-        config.turn_servers = mTurnServers;
-        config.turn_servers_count = aClient->mTurnServers.size();
+    } else {
+	    config.local_port_range_begin = 60000;
+	    config.local_port_range_end = 61000;
     }
-
-	config.local_port_range_begin = 60000;
-	config.local_port_range_end = 61000;
 
     config.cb_state_changed = sOnStateChanged;
     config.cb_candidate = sOnCandidate;
@@ -127,6 +129,8 @@ void Peer::Connect(const char* aSdp) {
     if (gClient->mCurrentUserId >= mId) {
         SendSdp();
     }
+
+    juice_gather_candidates(mAgent);
 }
 
 void Peer::SendSdp() {
@@ -137,8 +141,6 @@ void Peer::SendSdp() {
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
         { mSdp }
     ).Send(*gClient->mConnection);
-
-    juice_gather_candidates(mAgent);
 }
 
 bool Peer::Send(const uint8_t* aData, size_t aDataLength) {
