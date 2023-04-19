@@ -20,14 +20,14 @@ StunTurnServer sStunServer = {
 StunTurnServer sTurnServers[] = {
     {
         .host = "a.relay.metered.ca",
-        .username = "6bffbbeeba8f410932ac8c61",
-        .password = "+xyFIcvUWkzknKsg",
+        .username = "328688ecfeafe4b22a869001",
+        .password = "XNODwaZLrmd2mBOW",
         .port = 80,
     },
     {
         .host = "a.relay.metered.ca",
-        .username = "328688ecfeafe4b22a869001",
-        .password = "XNODwaZLrmd2mBOW",
+        .username = "6bffbbeeba8f410932ac8c61",
+        .password = "+xyFIcvUWkzknKsg",
         .port = 80,
     },
 };
