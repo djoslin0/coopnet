@@ -123,9 +123,6 @@ void MPacket::Send(Lobby& lobby) {
 }
 
 void MPacket::Process(Connection* connection, uint8_t* aData) {
-    // make sure connection is still valid
-    if (!Connection::IsValid(connection)) { return; }
-
     // extract variables from data
     MPacketHeader header = *(MPacketHeader*)aData;
     void* voidData = &aData[sizeof(MPacketHeader)];

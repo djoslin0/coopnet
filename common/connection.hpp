@@ -25,7 +25,6 @@ class Connection {
 
         Connection(uint64_t id);
         ~Connection();
-        static bool IsValid(Connection* connection);
         void Begin();
         void Disconnect(bool aIntentional);
         void Receive();

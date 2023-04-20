@@ -157,9 +157,9 @@ void Server::Update() {
             // erase the connection if it's inactive, otherwise receive packets
             if (connection != nullptr) {
                 if (!connection->mActive) {
-                    it = mConnections.erase(it);
                     LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
                     delete connection;
+                    it = mConnections.erase(it);
                     continue;
                 } else if (connection != nullptr) {
                     connection->Receive();

@@ -10,25 +10,11 @@
 #include "logging.hpp"
 #include "mpacket.hpp"
 
-std::set<Connection*> sAllConnections;
-std::mutex sAllConnectionsMutex;
-
 Connection::Connection(uint64_t id) {
     mId = id;
-
-    std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
-    sAllConnections.insert(this);
-    LOG_INFO("Connections (added): %" PRIu64 "", (uint64_t)sAllConnections.size());
 }
 
 Connection::~Connection() {
-    std::lock_guard<std::mutex> guard(sAllConnectionsMutex);
-    sAllConnections.erase(this);
-    LOG_INFO("Connections (removed): %" PRIu64 "", (uint64_t)sAllConnections.size());
-}
-
-bool Connection::IsValid(Connection* connection) {
-    return (sAllConnections.count(connection) > 0);
 }
 
 void Connection::Begin() {
