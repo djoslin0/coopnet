@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#define MPACKET_PROTOCOL_VERSION 1
+#define MPACKET_PROTOCOL_VERSION 2
 #define MPACKET_MAX_SIZE ((size_t)5100)
 
 // forward declarations
@@ -15,6 +15,7 @@ enum MPacketType {
     MPACKET_JOINED,
     MPACKET_LOBBY_CREATE,
     MPACKET_LOBBY_CREATED,
+    MPACKET_LOBBY_UPDATE,
     MPACKET_LOBBY_JOIN,
     MPACKET_LOBBY_JOINED,
     MPACKET_LOBBY_LEAVE,
@@ -24,10 +25,10 @@ enum MPacketType {
     MPACKET_LOBBY_LIST_FINISH,
     MPACKET_PEER_SDP,
     MPACKET_PEER_CANDIDATE,
+    MPACKET_PEER_CANDIDATE_DONE,
     MPACKET_PEER_FAILED,
     MPACKET_STUN_TURN,
     MPACKET_ERROR,
-    MPACKET_LOBBY_UPDATE,
     MPACKET_MAX,
 };
 
@@ -103,6 +104,11 @@ typedef struct {
     uint64_t lobbyId;
     uint64_t userId;
 } MPacketPeerCandidateData;
+
+typedef struct {
+    uint64_t lobbyId;
+    uint64_t userId;
+} MPacketPeerCandidateDoneData;
 
 typedef struct {
     uint64_t lobbyId;
@@ -210,6 +216,17 @@ class MPacketLobbyCreated : public MPacketImpl<MPacketLobbyCreatedData> {
         bool Receive(Connection* connection) override;
 };
 
+class MPacketLobbyUpdate : public MPacketImpl<MPacketLobbyUpdateData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_LOBBY_UPDATE,
+            .stringCount = 5,
+            .sendType = MSEND_TYPE_CLIENT
+        };}
+        bool Receive(Connection* connection) override;
+};
+
 class MPacketLobbyJoin : public MPacketImpl<MPacketLobbyJoinData> {
     public:
         using MPacketImpl::MPacketImpl;
@@ -309,6 +326,17 @@ class MPacketPeerCandidate : public MPacketImpl<MPacketPeerCandidateData> {
         bool Receive(Connection* connection) override;
 };
 
+class MPacketPeerCandidateDone : public MPacketImpl<MPacketPeerCandidateDoneData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_PEER_CANDIDATE_DONE,
+            .stringCount = 0,
+            .sendType = MSEND_TYPE_BOTH
+        };}
+        bool Receive(Connection* connection) override;
+};
+
 class MPacketPeerFailed : public MPacketImpl<MPacketPeerFailedData> {
     public:
         using MPacketImpl::MPacketImpl;
@@ -338,17 +366,6 @@ class MPacketError : public MPacketImpl<MPacketErrorData> {
             .packetType = MPACKET_ERROR,
             .stringCount = 0,
             .sendType = MSEND_TYPE_SERVER
-        };}
-        bool Receive(Connection* connection) override;
-};
-
-class MPacketLobbyUpdate : public MPacketImpl<MPacketLobbyUpdateData> {
-    public:
-        using MPacketImpl::MPacketImpl;
-        MPacketImplSettings GetImplSettings() override { return {
-            .packetType = MPACKET_LOBBY_UPDATE,
-            .stringCount = 5,
-            .sendType = MSEND_TYPE_CLIENT
         };}
         bool Receive(Connection* connection) override;
 };

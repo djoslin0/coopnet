@@ -124,7 +124,9 @@ void Peer::Update() {
 
 void Peer::Connect(const char* aSdp) {
     juice_set_remote_description(mAgent, aSdp);
-    juice_gather_candidates(mAgent);
+    if (mControlling) {
+        juice_gather_candidates(mAgent);
+    }
 
     // Send if it isn't an ICE controller
     if (!mControlling) {
@@ -165,6 +167,14 @@ void Peer::CandidateAdd(const char* aSdp) {
     juice_add_remote_candidate(mAgent, aSdp);
 }
 
+void Peer::CandidateDone() {
+    LOG_INFO("Remote gathering done %" PRIu64 "", mId);
+    juice_set_remote_gathering_done(mAgent);
+    if (!mControlling) {
+        juice_gather_candidates(mAgent);
+    }
+}
+
 void Peer::OnStateChanged(juice_state_t aState) {
     LOG_INFO("State change (%" PRIu64 "): %s", mId, juice_state_to_string(aState));
 
@@ -175,6 +185,20 @@ void Peer::OnStateChanged(juice_state_t aState) {
     bool isDisconnected = (aState == JUICE_STATE_DISCONNECTED) || (aState == JUICE_STATE_FAILED);
 
     if (!wasConnected && mConnected) {
+        // Retrieve candidates
+        char local[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
+        char remote[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
+        if (juice_get_selected_candidates(mAgent, local, JUICE_MAX_CANDIDATE_SDP_STRING_LEN, remote, JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0) {
+            LOG_INFO("Local candidate : %s\n", local);
+            LOG_INFO("Remote candidate: %s\n", remote);
+
+            if (mControlling && strstr(local, "relay") != NULL) {
+                LOG_INFO("Using TURN relay server");
+            } else if (!mControlling && strstr(remote, "relay") != NULL) {
+                LOG_INFO("Using TURN relay server");
+            }
+        }
+
         if (gCoopNetCallbacks.OnPeerConnected) {
             gCoopNetCallbacks.OnPeerConnected(mId);
         }
@@ -192,16 +216,20 @@ void Peer::OnStateChanged(juice_state_t aState) {
 
 void Peer::OnCandidate(const char* aSdp) {
     LOG_INFO("Candidate (%" PRIu64 "): %s", mId, aSdp);
-    /*
+
     // Uncomment to force a TURN connection
+    /*
     if (mControlling) {
-        if (!strstr(aSdp, "relay"))
+        if (!strstr(aSdp, "relay")) {
+            LOG_INFO("Rejecting non-relay!");
             return;
+        }
     } else {
-        if (!strstr(aSdp, "srflx"))
+        if (!strstr(aSdp, "srflx")) {
+            LOG_INFO("Rejecting non-srflx!");
             return;
-    }
-    */
+        }
+    }*/
 
     MPacketPeerCandidate(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
@@ -211,8 +239,9 @@ void Peer::OnCandidate(const char* aSdp) {
 
 void Peer::OnGatheringDone() {
     LOG_INFO("Gathering done (%" PRIu64 ")", mId);
-    // TODO: send signal packet to call this:
-    //  juice_set_remote_gathering_done(mAgent);
+    MPacketPeerCandidateDone(
+        { .lobbyId = gClient->mCurrentLobbyId, .userId = mId }
+    ).Send(*gClient->mConnection);
 }
 
 void Peer::OnRecv(const uint8_t* aData, size_t aSize) {

@@ -15,6 +15,7 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketJoined(),
     new MPacketLobbyCreate(),
     new MPacketLobbyCreated(),
+    new MPacketLobbyUpdate(),
     new MPacketLobbyJoin(),
     new MPacketLobbyJoined(),
     new MPacketLobbyLeave(),
@@ -24,10 +25,10 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketLobbyListFinish(),
     new MPacketPeerSdp(),
     new MPacketPeerCandidate(),
+    new MPacketPeerCandidateDone(),
     new MPacketPeerFailed(),
     new MPacketStunTurn(),
     new MPacketError(),
-    new MPacketLobbyUpdate(),
 };
 
 void MPacket::Send(Connection& connection) {
@@ -292,6 +293,20 @@ bool MPacketLobbyCreated::Receive(Connection* connection) {
     return true;
 }
 
+bool MPacketLobbyUpdate::Receive(Connection* connection) {
+    std::string game        = mStringData[0].substr(0, 32);
+    std::string version     = mStringData[1].substr(0, 32);
+    std::string hostName    = mStringData[2].substr(0, 32);
+    std::string mode        = mStringData[3].substr(0, 32);
+    std::string description = mStringData[4].substr(0, 256);
+
+    LOG_INFO("MPACKET_LOBBY_UPDATE received: lobbyId %" PRIu64 ", game '%s', version '%s', hostName '%s', mode '%s'",
+        mData.lobbyId, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
+    gServer->LobbyUpdate(connection, mData.lobbyId, game, version, hostName, mode, description);
+
+    return true;
+}
+
 bool MPacketLobbyJoin::Receive(Connection* connection) {
     LOG_INFO("MPACKET_LOBBY_JOIN received: lobbyId %" PRIu64 "", mData.lobbyId);
 
@@ -471,6 +486,40 @@ bool MPacketPeerCandidate::Receive(Connection *connection) {
     return false;
 }
 
+bool MPacketPeerCandidateDone::Receive(Connection *connection) {
+    LOG_INFO("MPACKET_PEER_CANDIDATE_DONE received: lobbyId %" PRIu64 ", userId %" PRIu64 "", mData.lobbyId, mData.userId);
+    if (gServer) {
+        Connection* other = gServer->ConnectionGet(mData.userId);
+
+        if (!other) {
+            LOG_ERROR("Could not find user: %" PRIu64 "", mData.userId);
+            return false;
+        }
+
+        MPacketPeerCandidateDone({
+           .lobbyId = mData.lobbyId,
+           .userId = connection->mId
+        }).Send(*other);
+
+        return true;
+    }
+
+    if (gClient) {
+        Peer* peer = gClient->PeerGet(mData.userId);
+
+        if (!peer) {
+            LOG_ERROR("Could not find peer: %" PRIu64 "", mData.userId);
+            return false;
+        }
+
+        peer->CandidateDone();
+        return true;
+    }
+
+    LOG_ERROR("Received peer sdp without being server or client");
+    return false;
+}
+
 bool MPacketPeerFailed::Receive(Connection *connection) {
     LOG_INFO("MPACKET_PEER_FAILED received: lobbyId %" PRIu64 ", peerId %" PRIu64 "", mData.lobbyId, mData.peerId);
     // make sure client is still in this lobby
@@ -527,19 +576,5 @@ bool MPacketError::Receive(Connection* connection) {
     if (gCoopNetCallbacks.OnError) {
         gCoopNetCallbacks.OnError((enum MPacketErrorNumber)mData.errorNumber, mData.tag);
     }
-    return true;
-}
-
-bool MPacketLobbyUpdate::Receive(Connection* connection) {
-    std::string game        = mStringData[0].substr(0, 32);
-    std::string version     = mStringData[1].substr(0, 32);
-    std::string hostName    = mStringData[2].substr(0, 32);
-    std::string mode        = mStringData[3].substr(0, 32);
-    std::string description = mStringData[4].substr(0, 256);
-
-    LOG_INFO("MPACKET_LOBBY_UPDATE received: lobbyId %" PRIu64 ", game '%s', version '%s', hostName '%s', mode '%s'",
-        mData.lobbyId, game.c_str(), version.c_str(), hostName.c_str(), mode.c_str());
-    gServer->LobbyUpdate(connection, mData.lobbyId, game, version, hostName, mode, description);
-
     return true;
 }
