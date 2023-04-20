@@ -56,6 +56,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mLastState = JUICE_STATE_DISCONNECTED;
     mCurrentState = JUICE_STATE_DISCONNECTED;
     mTimeout = clock_elapsed() + PEER_TIMEOUT;
+    mControlling = (gClient->mCurrentUserId < mId);
 
     juice_set_log_level(JUICE_LOG_LEVEL_INFO);
 
@@ -66,9 +67,10 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     // STUN server example
     config.stun_server_host = aClient->mStunServer.host.c_str();
     config.stun_server_port = aClient->mStunServer.port;
+    LOG_INFO("STUN server: %s, %u", config.stun_server_host, config.stun_server_port);
 
     // TURN server example (use your own server in production)
-    if (gClient->mCurrentUserId < mId) {
+    if (mControlling) {
         mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
         if (!mTurnServers) {
             config.turn_servers = nullptr;
@@ -81,13 +83,11 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
                 mTurnServers[i].port = turn->port;
                 mTurnServers[i].username = turn->username.c_str();
                 mTurnServers[i].password = turn->password.c_str();
+                LOG_INFO("TURN server: %s, %u", mTurnServers[i].host, mTurnServers[i].port);
             }
             config.turn_servers = mTurnServers;
             config.turn_servers_count = aClient->mTurnServers.size();
         }
-    } else {
-	    config.local_port_range_begin = 60000;
-	    config.local_port_range_end = 61000;
     }
 
     config.cb_state_changed = sOnStateChanged;
@@ -101,7 +101,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mAgent = juice_create(&config);
 
     // Send if it is an ICE controller
-    if (gClient->mCurrentUserId < mId) {
+    if (mControlling) {
         SendSdp();
     }
 }
@@ -124,13 +124,12 @@ void Peer::Update() {
 
 void Peer::Connect(const char* aSdp) {
     juice_set_remote_description(mAgent, aSdp);
+    juice_gather_candidates(mAgent);
 
     // Send if it isn't an ICE controller
-    if (gClient->mCurrentUserId >= mId) {
+    if (!mControlling) {
         SendSdp();
     }
-
-    juice_gather_candidates(mAgent);
 }
 
 void Peer::SendSdp() {
@@ -144,9 +143,9 @@ void Peer::SendSdp() {
 }
 
 bool Peer::Send(const uint8_t* aData, size_t aDataLength) {
-    //LOG_INFO("Peer sending to (%" PRIu64 ")\n", mId);
-    if (mCurrentState != JUICE_STATE_COMPLETED) {
-        LOG_INFO("Refusing send because not connected to (%" PRIu64 ")\n", mId);
+    if (!mConnected) {
+        LOG_INFO("Refusing send because not yet connected to (%" PRIu64 ")\n", mId);
+        return false;
     }
     juice_send(mAgent, (const char*)aData, aDataLength);
     return true;
@@ -193,6 +192,16 @@ void Peer::OnStateChanged(juice_state_t aState) {
 
 void Peer::OnCandidate(const char* aSdp) {
     LOG_INFO("Candidate (%" PRIu64 "): %s", mId, aSdp);
+    /*
+    // Uncomment to force a TURN connection
+    if (mControlling) {
+        if (!strstr(aSdp, "relay"))
+            return;
+    } else {
+        if (!strstr(aSdp, "srflx"))
+            return;
+    }
+    */
 
     MPacketPeerCandidate(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
@@ -202,11 +211,11 @@ void Peer::OnCandidate(const char* aSdp) {
 
 void Peer::OnGatheringDone() {
     LOG_INFO("Gathering done (%" PRIu64 ")", mId);
+    // TODO: send signal packet to call this:
+    //  juice_set_remote_gathering_done(mAgent);
 }
 
 void Peer::OnRecv(const uint8_t* aData, size_t aSize) {
-    //LOG_INFO("Recv (%" PRIu64 "), size %" PRIu64 "", mId, (uint64_t)aSize);
-
     if (gCoopNetCallbacks.OnReceive) {
         gCoopNetCallbacks.OnReceive(mId, aData, (uint64_t)aSize);
     }
