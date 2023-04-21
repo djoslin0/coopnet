@@ -71,7 +71,7 @@ void Connection::Receive() {
     socklen_t len = sizeof(struct sockaddr_in);
     int ret = recvfrom(mSocket, (char*)&mData[mDataSize], (size_t)remaining, MSG_DONTWAIT, (struct sockaddr *) &mAddress, &len);
     int rc = SOCKET_LAST_ERROR;
-    LOG_INFO("RECV: %d, %d, %" PRId64 ", %" PRId64, ret, rc, remaining, mDataSize);
+    //LOG_INFO("RECV: %d, %d, %" PRId64 ", %" PRId64, ret, rc, remaining, mDataSize);
 
     // make sure connection is still active
     if (!mActive) { return; }
