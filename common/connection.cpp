@@ -66,6 +66,7 @@ void Connection::Receive() {
         Disconnect(false);
         return;
     }
+    if (remaining > 1024) { remaining = 1024; }
 
     // receive from socket
     socklen_t len = sizeof(struct sockaddr_in);
