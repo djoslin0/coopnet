@@ -143,7 +143,6 @@ void Server::Receive() {
         // remember connection
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
         mConnections[connection->mId] = connection;
-        mPlayerCount++;
         LOG_INFO("[%" PRIu64 "] Connection added, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
     }
 }
@@ -152,16 +151,19 @@ void Server::Update() {
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
-
+        int players = 0;
         for (auto it = mConnections.begin(); it != mConnections.end(); ) {
             Connection* connection = it->second;
             // erase the connection if it's inactive, otherwise receive packets
             if (connection != nullptr) {
+                if (connection->mActive && connection->mLobby != nullptr) {
+                    players++;
+                }
+
                 if (!connection->mActive) {
                     LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
                     delete connection;
                     it = mConnections.erase(it);
-                    mPlayerCount--;
                     continue;
                 } else if (connection != nullptr) {
                     connection->Receive();
@@ -169,6 +171,8 @@ void Server::Update() {
             }
             ++it;
         }
+
+        mPlayerCount = players;
         fflush(stdout);
         fflush(stderr);
     }
