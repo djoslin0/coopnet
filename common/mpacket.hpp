@@ -141,13 +141,13 @@ class MPacket {
     private:
     protected:
         void* mVoidData = NULL;
-        uint16_t mVoidDataSize = 0;
+        int64_t mVoidDataSize = 0;
         std::vector<std::string> mStringData;
 
     public:
         void Send(Connection& connection);
         void Send(Lobby& lobby);
-        static void Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, uint16_t aMaxDataSize);
+        static void Read(Connection* connection, uint8_t* aData, int64_t* aDataSize, int64_t aMaxDataSize);
         static void Process(Connection* connection, uint8_t* aData);
         virtual bool Receive(Connection* connection) { return false; };
         virtual MPacketImplSettings GetImplSettings() { return {

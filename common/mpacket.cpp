@@ -38,22 +38,37 @@ void MPacket::Send(Connection& connection) {
     }
 
     // figure out string size
-    uint16_t stringSize = 0;
+    int64_t stringSize = 0;
     for (const auto& s : mStringData) {
-        stringSize += sizeof(uint16_t) + strlen(s.c_str());
+        int64_t size = strlen(s.c_str());
+        if (size >= UINT16_MAX) {
+            LOG_ERROR("Tried to include a string that was too large: %" PRId64 "", size);
+            return;
+        }
+        stringSize += sizeof(uint16_t) + size;
+    }
+    if (stringSize >= UINT16_MAX) {
+        LOG_ERROR("Tried to include a total string size that was too large: %" PRId64 "", stringSize);
+        return;
+    }
+
+    // sanity check void data size
+    if (mVoidDataSize >= UINT16_MAX) {
+        LOG_ERROR("Tried to include a total void data size that was too large: %" PRId64 "", mVoidDataSize);
+        return;
     }
 
     // setup packet header
     MPacketImplSettings impl = GetImplSettings();
     MPacketHeader pHeader = {
         .packetType = static_cast<uint16_t>(impl.packetType),
-        .dataSize = mVoidDataSize,
-        .stringSize = stringSize
+        .dataSize = (uint16_t)mVoidDataSize,
+        .stringSize = (uint16_t)stringSize
     };
 
     // figure out data size
-    size_t dataSize = sizeof(MPacketHeader) + pHeader.dataSize + pHeader.stringSize;
-    if (dataSize > MPACKET_MAX_SIZE) {
+    int64_t dataSize = sizeof(MPacketHeader) + pHeader.dataSize + pHeader.stringSize;
+    if (dataSize > (int64_t)MPACKET_MAX_SIZE || dataSize >= (int64_t)UINT16_MAX) {
         LOG_ERROR("Packet size exceeded max size (%" PRIu64 " > %" PRIu64 ")", (uint64_t)dataSize, (uint64_t)MPACKET_MAX_SIZE);
         return;
     }
@@ -94,6 +109,9 @@ void MPacket::Send(Connection& connection) {
     // send data buffer
     int sent = sendto(connection.mSocket, (char*)&data[0], dataSize, MSG_NOSIGNAL, (const sockaddr*)&connection.mAddress, sizeof(struct sockaddr_in));
     int rc = SOCKET_LAST_ERROR;
+    if (rc != 0) {
+        LOG_ERROR("Socket sendto error: %d", rc);
+    }
 
     // debug print packet
     /*LOG_INFO("Sent data:");
@@ -145,8 +163,8 @@ void MPacket::Process(Connection* connection, uint8_t* aData) {
     MPacket* packet = sPacketByType[header.packetType];
 
     // sanity check data size
-    if (header.dataSize != packet->mVoidDataSize) {
-        LOG_ERROR("Received the wrong data size: %u != %u (packetType %u)", header.dataSize, packet->mVoidDataSize, header.packetType);
+    if ((int64_t)header.dataSize != packet->mVoidDataSize) {
+        LOG_ERROR("Received the wrong data size: %u != %" PRId64 " (packetType %u)", header.dataSize, packet->mVoidDataSize, header.packetType);
         return;
     }
 
@@ -216,10 +234,10 @@ void MPacket::Process(Connection* connection, uint8_t* aData) {
     }
 }
 
-void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, uint16_t aMaxDataSize) {
+void MPacket::Read(Connection* connection, uint8_t* aData, int64_t* aDataSize, int64_t aMaxDataSize) {
     while (true) {
         MPacketHeader header = *(MPacketHeader*)aData;
-        uint16_t totalSize = sizeof(MPacketHeader) + header.dataSize + header.stringSize;
+        int64_t totalSize = sizeof(MPacketHeader) + header.dataSize + header.stringSize;
 
         // check the received size
         if (*aDataSize < totalSize) {
@@ -230,13 +248,17 @@ void MPacket::Read(Connection* connection, uint8_t* aData, uint16_t* aDataSize, 
         MPacket::Process(connection, aData);
 
         // shift the data array
-        uint16_t j = 0;
-        for (uint16_t i = totalSize; i < *aDataSize; i++) {
+        int64_t j = 0;
+        for (int64_t i = totalSize; i < *aDataSize; i++) {
             aData[j++] = aData[i];
         }
 
         // reduce the current buffer size
         *aDataSize -= totalSize;
+        if (*aDataSize < 0) {
+            LOG_ERROR("Data size below zero!");
+            *aDataSize = 0;
+        }
     }
 }
 

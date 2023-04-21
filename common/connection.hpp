@@ -11,7 +11,7 @@ class Connection {
     private:
         std::string mAddressStr;
         uint8_t mData[MPACKET_MAX_SIZE] = { 0 };
-        uint16_t mDataSize = 0;
+        int64_t mDataSize = 0;
 
     public:
         bool mActive = false;
