@@ -143,6 +143,7 @@ void Server::Receive() {
         // remember connection
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
         mConnections[connection->mId] = connection;
+        mPlayerCount++;
         LOG_INFO("[%" PRIu64 "] Connection added, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
     }
 }
@@ -160,6 +161,7 @@ void Server::Update() {
                     LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
                     delete connection;
                     it = mConnections.erase(it);
+                    mPlayerCount--;
                     continue;
                 } else if (connection != nullptr) {
                     connection->Receive();
@@ -235,6 +237,7 @@ void Server::OnLobbyLeave(Lobby* aLobby, Connection* aConnection) {
 
 void Server::OnLobbyDestroy(Lobby* aLobby) {
     mLobbies.erase(aLobby->mId);
+    mLobbyCount--;
     LOG_INFO("[%" PRIu64 "] Lobby removed, count: %" PRIu64 "", aLobby->mId, (uint64_t)mLobbies.size());
 }
 
@@ -277,6 +280,7 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
     }).Send(*aConnection);
 
     lobby->Join(aConnection, aPassword);
+    mLobbyCount++;
 }
 
 void Server::LobbyUpdate(Connection *aConnection, uint64_t aLobbyId, std::string &aGame, std::string &aVersion, std::string &aHostName, std::string &aMode, std::string &aDescription) {
@@ -297,10 +301,10 @@ void Server::LobbyUpdate(Connection *aConnection, uint64_t aLobbyId, std::string
     lobby->mDescription = aDescription.substr(0, 256);
 }
 
-int Server::ConnectionCount() {
-    return mConnections.size();
+int Server::PlayerCount() {
+    return mPlayerCount;
 }
 
 int Server::LobbyCount() {
-    return mLobbies.size();
+    return mLobbyCount;
 }

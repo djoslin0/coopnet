@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     }
 
     while (true) {
-        metrics.Update(gServer->LobbyCount(), gServer->ConnectionCount());
+        metrics.Update(gServer->LobbyCount(), gServer->PlayerCount());
         std::this_thread::sleep_for(std::chrono::milliseconds(60 * 1000));
     }
     return 0;
