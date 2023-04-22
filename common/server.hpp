@@ -1,6 +1,7 @@
 #pragma once
 
 #include <thread>
+#include <vector>
 #include <map>
 #include <mutex>
 #include <random>
@@ -20,8 +21,11 @@ class Server {
         std::map<uint64_t, Lobby*> mLobbies;
         std::mt19937_64 mPrng;
         std::uniform_int_distribution<uint64_t> mRng;
+        std::vector<StunTurnServer> mTurnServers;
         int mLobbyCount = 0;
         int mPlayerCount = 0;
+
+        void ReadTurnServers();
 
     public:
         bool Begin(uint32_t aPort);

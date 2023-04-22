@@ -1,5 +1,8 @@
 #include <sys/types.h>
 #include <chrono>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 #include "socket.hpp"
 #include "logging.hpp"
@@ -17,21 +20,6 @@ StunTurnServer sStunServer = {
     .port = 19302,
 };
 
-StunTurnServer sTurnServers[] = {
-    {
-        .host = "a.relay.metered.ca",
-        .username = "328688ecfeafe4b22a869001",
-        .password = "XNODwaZLrmd2mBOW",
-        .port = 80,
-    },
-    {
-        .host = "a.relay.metered.ca",
-        .username = "6bffbbeeba8f410932ac8c61",
-        .password = "+xyFIcvUWkzknKsg",
-        .port = 80,
-    },
-};
-
 static void sOnLobbyJoin(Lobby* lobby, Connection* connection) { gServer->OnLobbyJoin(lobby, connection); }
 static void sOnLobbyLeave(Lobby* lobby, Connection* connection) { gServer->OnLobbyLeave(lobby, connection); }
 static void sOnLobbyDestroy(Lobby* lobby) { gServer->OnLobbyDestroy(lobby); }
@@ -39,7 +27,38 @@ static void sOnLobbyDestroy(Lobby* lobby) { gServer->OnLobbyDestroy(lobby); }
 static void sReceiveStart(Server* server) { server->Receive(); }
 static void sUpdateStart(Server* server)  { server->Update(); }
 
-bool Server::Begin(uint32_t aPort) {
+void Server::ReadTurnServers() {
+    mTurnServers.clear();
+    std::ifstream input("turn-servers.cfg");
+    std::string line;
+
+    if (input.good()) {
+        while (std::getline(input, line)) {
+            std::size_t pos1 = line.find(":");
+            std::size_t pos2 = line.find(":", pos1 + 1);
+            std::size_t pos3 = line.find(":", pos2 + 1);
+            if (pos1 == std::string::npos || pos2 == std::string::npos || pos3 == std::string::npos) { continue; }
+
+            StunTurnServer turn = {
+                .host = line.substr(0, pos1),
+                .username = line.substr(pos1 + 1, pos2 - pos1 - 1),
+                .password = line.substr(pos2 + 1, pos3 - pos2 - 1),
+                .port = (uint16_t)std::stoul(line.substr(pos3 + 1)),
+            };
+            mTurnServers.push_back(turn);
+            LOG_ERROR("Loaded turn server: %s:%u", turn.host.c_str(), turn.port);
+        }
+    } else {
+        LOG_ERROR("turn-servers.cfg not found");
+    }
+
+    input.close();
+}
+
+bool Server::Begin(uint32_t aPort)
+{
+    // read TURN servers
+    ReadTurnServers();
 
     // create a master socket
     mSocket = SocketInitialize(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -131,12 +150,10 @@ void Server::Receive() {
         ).Send(*connection);
 
         // send turn servers
-        uint32_t turnServerCount = sizeof(sTurnServers) / sizeof(sTurnServers[0]);
-        for (uint32_t i = 0; i < turnServerCount; i++) {
-            StunTurnServer* turn = &sTurnServers[i];
+        for (auto& it : mTurnServers) {
             MPacketStunTurn(
-                { .isStun = false, .port = turn->port },
-                { turn->host, turn->username, turn->password }
+                { .isStun = false, .port = it.port },
+                { it.host, it.username, it.password }
             ).Send(*connection);
         }
 
