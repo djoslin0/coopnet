@@ -78,9 +78,7 @@ void Connection::Receive() {
     if (!mActive) { return; }
 
     // check for error
-    if (ret == 0 && rc == 0) {
-        return;
-    } else if ((ret == -1 || ret == 0) && (rc == SOCKET_EAGAIN || rc == SOCKET_EWOULDBLOCK)) {
+    if ((ret == -1 ) && (rc == SOCKET_EAGAIN || rc == SOCKET_EWOULDBLOCK)) {
         //LOG_INFO("[%" PRIu64 "] continue", mId);
         return;
     } else if (ret == 0 || (rc == SOCKET_ECONNRESET)) {
