@@ -107,11 +107,13 @@ void MPacket::Send(Connection& connection) {
     }
 
     // send data buffer
+    SOCKET_RESET_ERROR();
     int sent = sendto(connection.mSocket, (char*)&data[0], dataSize, MSG_NOSIGNAL, (const sockaddr*)&connection.mAddress, sizeof(struct sockaddr_in));
     int rc = SOCKET_LAST_ERROR;
-    if (rc != 0) {
+    if (rc != SOCKET_EAGAIN && rc != 0) {
         LOG_ERROR("Socket sendto error: %d", rc);
     }
+    LOG_INFO("SENT: %d, %d, %" PRId64 "", sent, rc, dataSize);
 
     // debug print packet
     /*LOG_INFO("Sent data:");

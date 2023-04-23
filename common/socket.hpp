@@ -8,6 +8,7 @@
 #define MSG_DONTWAIT 0
 #define MSG_NOSIGNAL 0
 
+#define SOCKET_RESET_ERROR() WSASetLastError(0)
 #define SOCKET_LAST_ERROR WSAGetLastError()
 #define SOCKET_EAGAIN EAGAIN
 #define SOCKET_EWOULDBLOCK WSAEWOULDBLOCK
@@ -22,6 +23,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 
+#define SOCKET_RESET_ERROR() errno = 0
 #define SOCKET_LAST_ERROR errno
 #define SOCKET_EAGAIN EAGAIN
 #define SOCKET_EWOULDBLOCK EWOULDBLOCK
@@ -32,3 +34,4 @@
 int SocketInitialize(int aAf, int aType, int aProtocol);
 int SocketClose(int aSocket);
 void SocketSetNonBlocking(int aSocket);
+void SocketLimitBuffer(int aSocket, int64_t* amount);

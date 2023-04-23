@@ -28,6 +28,7 @@ void Connection::Begin() {
     mDestinationId = (uint64_t)addr.sin_addr.s_addr;
 
     // set socket to non-blocking mode
+    SOCKET_RESET_ERROR();
     SocketSetNonBlocking(mSocket);
     int rc = SOCKET_LAST_ERROR;
     if (rc != 0) {
@@ -66,13 +67,20 @@ void Connection::Receive() {
         Disconnect(false);
         return;
     }
-    if (remaining > 1024) { remaining = 1024; }
+
+    // limit the buffer to the available amount
+    SocketLimitBuffer(mSocket, &remaining);
+    if (remaining <= 0) {
+        return;
+    }
 
     // receive from socket
-    socklen_t len = sizeof(struct sockaddr_in);
-    int ret = recvfrom(mSocket, (char*)&mData[mDataSize], (size_t)remaining, MSG_DONTWAIT, (struct sockaddr *) &mAddress, &len);
+    SOCKET_RESET_ERROR();
+    int ret = recv(mSocket, (char*)&mData[mDataSize], (size_t)remaining, MSG_DONTWAIT);
     int rc = SOCKET_LAST_ERROR;
-    //LOG_INFO("RECV: %d, %d, %" PRId64 ", %" PRId64, ret, rc, remaining, mDataSize);
+    if ((ret != -1) || (rc != SOCKET_EAGAIN && rc != SOCKET_EWOULDBLOCK)) {
+        LOG_INFO("RECV: %d, %d, %" PRId64 ", %" PRId64, ret, rc, remaining, mDataSize);
+    }
 
     // make sure connection is still active
     if (!mActive) { return; }

@@ -17,6 +17,11 @@ int SocketInitialize(int aAf, int aType, int aProtocol) {
 
     //
     int sock = socket(aAf, aType, aProtocol);
+    if (sock == -1) {
+        LOG_ERROR("socket creation failed with error %d", SOCKET_LAST_ERROR);
+        return sock;
+    }
+
     int on = 1;
     setsockopt(sock, SOL_SOCKET, SO_DONTLINGER, (char*)&on, sizeof(on));
 
@@ -32,10 +37,32 @@ int SocketClose(int aSocket) {
 void SocketSetNonBlocking(int aSocket) {
     // set socket to non-blocking mode
     u_long mode = 1;
-    ioctlsocket(aSocket, FIONBIO, &mode);
+    int rc = ioctlsocket(aSocket, FIONBIO, &mode);
+    if (rc != 0) {
+        LOG_ERROR("ioctlsocket failed with error: %d, %d", rc, SOCKET_LAST_ERROR);
+        return INVALID_SOCKET;
+    }
+}
+
+void SocketLimitBuffer(int aSocket, int64_t* amount) {
+    unsigned long bufferLength = 0;
+    ioctlsocket(aSocket, FIONREAD, &bufferLength);
+    if (*amount > bufferLength) {
+        *amount = bufferLength;
+    }
 }
 
 #else
+
+#include <sys/ioctl.h>
+
+void SocketLimitBuffer(int aSocket, int64_t* amount) {
+    int bufferLength = 0;
+    ioctl(aSocket, FIONREAD, &bufferLength);
+    if (*amount > bufferLength) {
+        *amount = bufferLength;
+    }
+}
 
 int SocketInitialize(int aAf, int aType, int aProtocol) {
     return socket(aAf, aType, aProtocol);
