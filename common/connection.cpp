@@ -28,13 +28,7 @@ void Connection::Begin() {
     mDestinationId = (uint64_t)addr.sin_addr.s_addr;
 
     // set socket to non-blocking mode
-    SOCKET_RESET_ERROR();
-    SocketSetNonBlocking(mSocket);
-    int rc = SOCKET_LAST_ERROR;
-    if (rc != 0) {
-        LOG_ERROR("Socket non-blocking error: %d", rc);
-    }
-
+    SocketSetOptions(mSocket);
 
     // convert address
     char asciiAddress[256] = { 0 };
@@ -70,9 +64,6 @@ void Connection::Receive() {
 
     // limit the buffer to the available amount
     SocketLimitBuffer(mSocket, &remaining);
-    if (remaining <= 0) {
-        return;
-    }
 
     // receive from socket
     SOCKET_RESET_ERROR();
@@ -86,7 +77,7 @@ void Connection::Receive() {
     if (!mActive) { return; }
 
     // check for error
-    if ((ret == -1 ) && (rc == SOCKET_EAGAIN || rc == SOCKET_EWOULDBLOCK)) {
+    if ((ret == -1) && (rc == SOCKET_EAGAIN || rc == SOCKET_EWOULDBLOCK)) {
         //LOG_INFO("[%" PRIu64 "] continue", mId);
         return;
     } else if (ret == 0 || (rc == SOCKET_ECONNRESET)) {
