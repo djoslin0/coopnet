@@ -44,14 +44,14 @@ void SocketSetOptions(int aSocket) {
     int keepAlive = 1;
     int result = setsockopt(aSocket, SOL_SOCKET, SO_KEEPALIVE, (char*)&keepAlive, sizeof(keepAlive));
     if (result == SOCKET_ERROR) {
-        LOG_ERROR("failed to set keep-alive: %d", SOCKET_LAST_ERROR)
+        LOG_ERROR("failed to set keep-alive: %d", SOCKET_LAST_ERROR);
     }
 
     // set socket to dont-linger
     SOCKET_RESET_ERROR();
     int on = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_DONTLINGER, (char*)&on, sizeof(on)) < 0) {
-        LOG_ERROR("failed to set dont-linger: %d", SOCKET_LAST_ERROR)
+    if (setsockopt(aSocket, SOL_SOCKET, SO_DONTLINGER, (char*)&on, sizeof(on)) < 0) {
+        LOG_ERROR("failed to set dont-linger: %d", SOCKET_LAST_ERROR);
     }
 
 }
