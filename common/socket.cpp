@@ -40,7 +40,6 @@ void SocketSetNonBlocking(int aSocket) {
     int rc = ioctlsocket(aSocket, FIONBIO, &mode);
     if (rc != 0) {
         LOG_ERROR("ioctlsocket failed with error: %d, %d", rc, SOCKET_LAST_ERROR);
-        return INVALID_SOCKET;
     }
 }
 

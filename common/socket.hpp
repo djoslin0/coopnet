@@ -4,6 +4,7 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <stdint.h>
 #define in_addr_t ULONG
 #define MSG_DONTWAIT 0
 #define MSG_NOSIGNAL 0
