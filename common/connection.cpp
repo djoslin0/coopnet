@@ -10,6 +10,8 @@
 #include "logging.hpp"
 #include "mpacket.hpp"
 
+#define CONNECTION_KEEP_ALIVE_SECS (60 * 3)
+
 Connection::Connection(uint64_t id) {
     mId = id;
 }
@@ -50,6 +52,16 @@ void Connection::Disconnect(bool aIntentional) {
 
     if (gCoopNetCallbacks.OnDisconnected) {
         gCoopNetCallbacks.OnDisconnected(aIntentional);
+    }
+}
+
+void Connection::Update() {
+    // send a packet with no important informations every 3 minutes,
+    // just to keep the connection alive
+    std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+    uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+    if ((mLastSendTime + CONNECTION_KEEP_ALIVE_SECS) < now) {
+        MPacketKeepAlive({ 0 }).Send(*this);
     }
 }
 

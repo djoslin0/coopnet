@@ -29,6 +29,7 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketPeerFailed(),
     new MPacketStunTurn(),
     new MPacketError(),
+    new MPacketKeepAlive(),
 };
 
 void MPacket::Send(Connection& connection) {
@@ -134,6 +135,10 @@ void MPacket::Send(Connection& connection) {
     if (sent != (int)dataSize) {
         LOG_ERROR("Error sending data, did not send all bytes (%d != %" PRIu64 ")!", sent, (uint64_t)dataSize);
     }
+
+    // update last send time
+    std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+    connection.mLastSendTime = std::chrono::system_clock::to_time_t(nowTp);
 }
 
 void MPacket::Send(Lobby& lobby) {
@@ -597,5 +602,10 @@ bool MPacketError::Receive(Connection* connection) {
     if (gCoopNetCallbacks.OnError) {
         gCoopNetCallbacks.OnError((enum MPacketErrorNumber)mData.errorNumber, mData.tag);
     }
+    return true;
+}
+
+bool MPacketKeepAlive::Receive(Connection *connection) {
+    LOG_INFO("[%" PRIu64 "] MPACKET_KEEP_ALIVE received", connection->mId);
     return true;
 }

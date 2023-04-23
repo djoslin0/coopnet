@@ -22,10 +22,12 @@ class Connection {
         struct sockaddr_in mAddress = { 0};
         Lobby* mLobby = nullptr;
         uint32_t mPriority = 0;
+        uint64_t mLastSendTime = 0;
 
         Connection(uint64_t id);
         ~Connection();
         void Begin();
         void Disconnect(bool aIntentional);
+        void Update();
         void Receive();
 };

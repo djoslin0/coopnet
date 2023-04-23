@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#define MPACKET_PROTOCOL_VERSION 2
+#define MPACKET_PROTOCOL_VERSION 3
 #define MPACKET_MAX_SIZE ((size_t)5100)
 
 // forward declarations
@@ -29,6 +29,7 @@ enum MPacketType {
     MPACKET_PEER_FAILED,
     MPACKET_STUN_TURN,
     MPACKET_ERROR,
+    MPACKET_KEEP_ALIVE,
     MPACKET_MAX,
 };
 
@@ -124,6 +125,10 @@ typedef struct {
     uint16_t errorNumber;
     uint64_t tag;
 } MPacketErrorData;
+
+typedef struct {
+    uint8_t unused;
+} MPacketKeepAliveData;
 
 typedef struct {
     uint64_t lobbyId;
@@ -366,6 +371,17 @@ class MPacketError : public MPacketImpl<MPacketErrorData> {
             .packetType = MPACKET_ERROR,
             .stringCount = 0,
             .sendType = MSEND_TYPE_SERVER
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketKeepAlive : public MPacketImpl<MPacketErrorData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_KEEP_ALIVE,
+            .stringCount = 0,
+            .sendType = MSEND_TYPE_BOTH
         };}
         bool Receive(Connection* connection) override;
 };
