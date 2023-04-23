@@ -52,6 +52,7 @@ void Client::Update() {
     mUpdating = true;
 
     mConnection->Receive();
+    mConnection->Update();
 
     // update peer
     for (auto& it : mPeers) {
