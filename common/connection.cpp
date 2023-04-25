@@ -27,7 +27,9 @@ void Connection::Begin() {
     struct sockaddr_in addr = { 0 };
     socklen_t len = sizeof(addr);
     getpeername(mSocket, (struct sockaddr*)&addr, &len);
-    mDestinationId = (uint64_t)addr.sin_addr.s_addr;
+    uint64_t addr64 = (uint64_t)addr.sin_addr.s_addr;
+    std::size_t hash = std::hash<uint64_t>{}(addr64);
+    mDestinationId = static_cast<uint64_t>(hash);
 
     // set socket to non-blocking mode
     SocketSetOptions(mSocket);
