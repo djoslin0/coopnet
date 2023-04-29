@@ -7,7 +7,6 @@
 #include <stdint.h>
 #define in_addr_t ULONG
 #define MSG_DONTWAIT 0
-#define MSG_NOSIGNAL 0
 
 #define SOCKET_RESET_ERROR() WSASetLastError(0)
 #define SOCKET_LAST_ERROR WSAGetLastError()
@@ -31,6 +30,10 @@
 #define SOCKET_EWOULDBLOCK EWOULDBLOCK
 #define SOCKET_ECONNRESET ECONNRESET
 
+#endif
+
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
 #endif
 
 int SocketInitialize(int aAf, int aType, int aProtocol);
