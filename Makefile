@@ -1,5 +1,13 @@
+#################
+# Build options #
+#################
+
+OSX_BUILD ?= 0
+
+#################
+
 CXX = g++
-CXXFLAGS = -Wall -Werror -std=c++11 -DJUICE_STATIC -g
+CXXFLAGS = -Wall -Werror -std=c++11 -fPIC -DJUICE_STATIC -g
 INCLUDES = -Icommon -Ilib/include
 LDFLAGS = -pthread
 
@@ -24,13 +32,15 @@ ifeq ($(OS),Windows_NT)
     LIB_DIR := lib/win32
     CXXFLAGS += -Wno-error=format
   endif
+else ifeq ($(OSX_BUILD),1)
+  LIB_DIR := lib/mac
 else
   LIB_DIR := lib/linux
 endif
 
-.PHONY: all client server lib clean
+.PHONY: all client server lib dynlib clean
 
-all: client server lib
+all: client server lib dynlib
 
 client: $(CLIENT_OBJ) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(CLIENT_OBJ) $(LIBS)
@@ -40,6 +50,9 @@ server: $(SERVER_OBJ) | $(BIN_DIR)
 
 lib: $(CLIENT_OBJ) | $(BIN_DIR)
 	ar rcs $(BIN_DIR)/libcoopnet.a $(COMMON_OBJ)
+
+dynlib: $(CLIENT_OBJ) | $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -shared -o $(BIN_DIR)/libcoopnet.so $(COMMON_OBJ) $(LIBS)
 
 bin/o/%.o: %.cpp | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
