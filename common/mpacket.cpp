@@ -114,7 +114,7 @@ void MPacket::Send(Connection& connection) {
     if (rc != SOCKET_EAGAIN && rc != 0) {
         LOG_ERROR("Socket sendto error: %d", rc);
     }
-    LOG_INFO("SENT: %d, %d, %" PRId64 "", sent, rc, dataSize);
+    //LOG_INFO("SENT: %d, %d, %" PRId64 "", sent, rc, dataSize);
 
     // debug print packet
     /*LOG_INFO("Sent data:");

@@ -24,11 +24,12 @@ class Server {
         std::vector<StunTurnServer> mTurnServers;
         int mLobbyCount = 0;
         int mPlayerCount = 0;
+        bool (*mBanCheckFunction)(uint64_t aDestId, std::string aAddressStr) = nullptr;
 
         void ReadTurnServers();
 
     public:
-        bool Begin(uint32_t aPort);
+        bool Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr));
         void Receive();
         void Update();
 

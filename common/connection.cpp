@@ -39,7 +39,7 @@ void Connection::Begin() {
     inet_ntop(AF_INET, &(mAddress.sin_addr), asciiAddress, sizeof(asciiAddress));
     mAddressStr = asciiAddress;
 
-    LOG_INFO("[%" PRIu64 "] Connection accepted: %s", mId, mAddressStr.c_str());
+    LOG_INFO("[%" PRIu64 "] Connection accepted: %s :: %" PRIu64 "", mId, mAddressStr.c_str(), mDestinationId);
 }
 
 void Connection::Disconnect(bool aIntentional) {
@@ -83,9 +83,9 @@ void Connection::Receive() {
     SOCKET_RESET_ERROR();
     int ret = recv(mSocket, (char*)&mData[mDataSize], (size_t)remaining, MSG_DONTWAIT);
     int rc = SOCKET_LAST_ERROR;
-    if ((ret != -1) || (rc != SOCKET_EAGAIN && rc != SOCKET_EWOULDBLOCK)) {
+    /*if ((ret != -1) || (rc != SOCKET_EAGAIN && rc != SOCKET_EWOULDBLOCK)) {
         LOG_INFO("RECV: %d, %d, %" PRId64 ", %" PRId64, ret, rc, remaining, mDataSize);
-    }
+    }*/
 
     // make sure connection is still active
     if (!mActive) { return; }

@@ -56,8 +56,11 @@ void Server::ReadTurnServers() {
     input.close();
 }
 
-bool Server::Begin(uint32_t aPort)
+bool Server::Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr))
 {
+    // remember ban function pointer
+    mBanCheckFunction = aBanCheckFunction;
+
     // read TURN servers
     ReadTurnServers();
 
@@ -137,6 +140,14 @@ void Server::Receive() {
 
         // start connection
         connection->Begin();
+
+        // check for ban
+        if (mBanCheckFunction && mBanCheckFunction(connection->mDestinationId, connection->mAddressStr)) {
+            LOG_INFO("[%" PRIu64 "] Connecting player is banned %" PRIu64 ", %s!", connection->mId, connection->mDestinationId, connection->mAddressStr.c_str());
+            if (connection->mSocket) { close(connection->mSocket); }
+            delete connection;
+            continue;
+        }
 
         // send join packet
         MPacketJoined({

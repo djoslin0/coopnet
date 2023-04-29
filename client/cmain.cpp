@@ -6,7 +6,7 @@
 #include "libcoopnet.h"
 #include "logging.hpp"
 
-#define HOST "143.244.214.139"
+#define HOST "localhost"
 #define PORT 34197
 #define EXIT_FAILURE 1
 

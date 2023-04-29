@@ -9,7 +9,6 @@ class Lobby;
 
 class Connection {
     private:
-        std::string mAddressStr;
         uint8_t mData[MPACKET_MAX_SIZE] = { 0 };
         int64_t mDataSize = 0;
 
@@ -23,6 +22,7 @@ class Connection {
         Lobby* mLobby = nullptr;
         uint32_t mPriority = 0;
         uint64_t mLastSendTime = 0;
+        std::string mAddressStr;
 
         Connection(uint64_t id);
         ~Connection();
