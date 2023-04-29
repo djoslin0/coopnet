@@ -144,7 +144,7 @@ void Server::Receive() {
         // check for ban
         if (mBanCheckFunction && mBanCheckFunction(connection->mDestinationId, connection->mAddressStr)) {
             LOG_INFO("[%" PRIu64 "] Connecting player is banned %" PRIu64 ", %s!", connection->mId, connection->mDestinationId, connection->mAddressStr.c_str());
-            if (connection->mSocket) { close(connection->mSocket); }
+            if (connection->mSocket) { SocketClose(connection->mSocket); }
             delete connection;
             continue;
         }
