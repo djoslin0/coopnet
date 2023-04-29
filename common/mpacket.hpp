@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#define MPACKET_PROTOCOL_VERSION 3
+#define MPACKET_PROTOCOL_VERSION 4
 #define MPACKET_MAX_SIZE ((size_t)5100)
 
 // forward declarations
