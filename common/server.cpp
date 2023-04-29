@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <algorithm>
 
 #include "socket.hpp"
 #include "logging.hpp"
@@ -150,6 +151,7 @@ void Server::Receive() {
         ).Send(*connection);
 
         // send turn servers
+        std::shuffle(mTurnServers.begin(), mTurnServers.end(), mPrng);
         for (auto& it : mTurnServers) {
             MPacketStunTurn(
                 { .isStun = false, .port = it.port },
