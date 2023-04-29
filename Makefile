@@ -9,7 +9,7 @@ OSX_BUILD ?= 0
 CXX = g++
 CXXFLAGS = -Wall -Werror -std=c++11 -fPIC -DJUICE_STATIC -g
 INCLUDES = -Icommon -Ilib/include
-LDFLAGS = -pthread
+LDFLAGS = -pthread -rpath .
 
 COMMON_SRC := $(wildcard common/*.cpp)
 COMMON_OBJ := $(patsubst common/%.cpp, bin/o/common/%.o, $(COMMON_SRC))
@@ -23,6 +23,7 @@ SERVER_OBJ = $(patsubst %.cpp, bin/o/%.o, $(SERVER_SRC))
 BIN_DIR = bin
 LIB_DIR = lib
 LIBS = -ljuice
+DYNLIB_NAME = libcoopnet.so
 
 ifeq ($(OS),Windows_NT)
   LIBS += -lws2_32 -lbcrypt
@@ -33,7 +34,10 @@ ifeq ($(OS),Windows_NT)
     CXXFLAGS += -Wno-error=format
   endif
 else ifeq ($(OSX_BUILD),1)
-  LIB_DIR := lib/mac
+  CXXFLAGS += -DOSX_BUILD=1
+  LIB_DIR := ./lib/mac
+  DYNLIB_NAME := libcoopnet.dylib
+  LIBS := -l juice
 else
   LIB_DIR := lib/linux
 endif
@@ -52,7 +56,7 @@ lib: $(CLIENT_OBJ) | $(BIN_DIR)
 	ar rcs $(BIN_DIR)/libcoopnet.a $(COMMON_OBJ)
 
 dynlib: $(CLIENT_OBJ) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -shared -o $(BIN_DIR)/libcoopnet.so $(COMMON_OBJ) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -dynamiclib -install_name @rpath/$(DYNLIB_NAME) -shared -o $(BIN_DIR)/$(DYNLIB_NAME) $(COMMON_OBJ) $(LIBS)
 
 bin/o/%.o: %.cpp | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
