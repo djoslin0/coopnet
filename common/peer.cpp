@@ -58,7 +58,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mTimeout = clock_elapsed() + PEER_TIMEOUT;
     mControlling = (gClient->mCurrentUserId < mId);
 
-    juice_set_log_level(JUICE_LOG_LEVEL_INFO);
+    juice_set_log_level(JUICE_LOG_LEVEL_NONE);
 
     // Agent 1: Create agent
     juice_config_t config;

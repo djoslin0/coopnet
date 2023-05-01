@@ -3,11 +3,12 @@
 #################
 
 OSX_BUILD ?= 0
+LOGGING ?= 0
 
 #################
 
 CXX = g++
-CXXFLAGS = -Wall -Werror -std=c++11 -fPIC -DJUICE_STATIC -g
+CXXFLAGS = -Wall -Werror -Wno-unused-function -Wno-nonnull-compare -std=c++11 -fPIC -DJUICE_STATIC -g
 INCLUDES = -Icommon -Ilib/include
 LDFLAGS = -pthread
 
@@ -22,7 +23,7 @@ SERVER_OBJ = $(patsubst %.cpp, bin/o/%.o, $(SERVER_SRC))
 
 BIN_DIR = bin
 LIB_DIR = lib
-LIBS = -ljuice
+LIBS = -l:libjuice.a
 DYNLIB_NAME = libcoopnet.so
 
 ifeq ($(OS),Windows_NT)
@@ -41,6 +42,10 @@ else ifeq ($(OSX_BUILD),1)
   LDFLAGS += -rpath . -dynamiclib -install_name @rpath/$(DYNLIB_NAME)
 else
   LIB_DIR := lib/linux
+endif
+
+ifeq ($(LOGGING),1)
+  CXXFLAGS += -DLOGGING
 endif
 
 .PHONY: all client server lib dynlib clean

@@ -2,6 +2,7 @@
 #include "server.hpp"
 #include "metrics.hpp"
 #include "bansystem.hpp"
+#include "sha2.hpp"
 
 #define PORT 34197
 #define EXIT_FAILURE 1
@@ -11,7 +12,7 @@ int main(int argc, char *argv[]) {
     ban_system_init();
 
     gServer = new Server();
-    if (!gServer->Begin(PORT, ban_system_is_banned)) {
+    if (!gServer->Begin(PORT, ban_system_is_banned, sha224_u64)) {
         exit(EXIT_FAILURE);
     }
 

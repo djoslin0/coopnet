@@ -26,7 +26,7 @@ class Connection {
 
         Connection(uint64_t id);
         ~Connection();
-        void Begin();
+        void Begin(uint64_t (*aDestIdFunction)(uint64_t aInput));
         void Disconnect(bool aIntentional);
         void Update();
         void Receive();

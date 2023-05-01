@@ -38,7 +38,7 @@ static void _debuglog_print_log(std::string logType, std::string filename) {
     _debuglog_print_short_filename(filename);
 }
 
-#if defined(DISABLE_MODULE_LOG)
+#if defined(DISABLE_MODULE_LOG) or !defined(LOGGING)
 #define LOG_DEBUG(...)
 #define LOG_INFO(...)
 #define LOG_ERROR(...)

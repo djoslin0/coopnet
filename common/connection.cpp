@@ -19,7 +19,7 @@ Connection::Connection(uint64_t id) {
 Connection::~Connection() {
 }
 
-void Connection::Begin() {
+void Connection::Begin(uint64_t (*aDestIdFunction)(uint64_t aInput)) {
     // store info
     mActive = true;
 
@@ -28,8 +28,9 @@ void Connection::Begin() {
     socklen_t len = sizeof(addr);
     getpeername(mSocket, (struct sockaddr*)&addr, &len);
     uint64_t addr64 = (uint64_t)addr.sin_addr.s_addr;
-    std::size_t hash = std::hash<uint64_t>{}(addr64);
-    mDestinationId = static_cast<uint64_t>(hash);
+    mDestinationId = (aDestIdFunction)
+        ? aDestIdFunction(addr64)
+        : 0;
 
     // set socket to non-blocking mode
     SocketSetOptions(mSocket);
@@ -38,6 +39,11 @@ void Connection::Begin() {
     char asciiAddress[256] = { 0 };
     inet_ntop(AF_INET, &(mAddress.sin_addr), asciiAddress, sizeof(asciiAddress));
     mAddressStr = asciiAddress;
+
+    // don't send a keep-alive packet immediately
+    std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+    uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+    mLastSendTime = now;
 
     LOG_INFO("[%" PRIu64 "] Connection accepted: %s :: %" PRIu64 "", mId, mAddressStr.c_str(), mDestinationId);
 }
@@ -62,7 +68,7 @@ void Connection::Update() {
     // just to keep the connection alive
     std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
     uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
-    if ((mLastSendTime + CONNECTION_KEEP_ALIVE_SECS) < now) {
+    if ((mLastSendTime + CONNECTION_KEEP_ALIVE_SECS) < now && this != nullptr) {
         MPacketKeepAlive({ 0 }).Send(*this);
     }
 }

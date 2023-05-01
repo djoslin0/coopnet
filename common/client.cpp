@@ -41,7 +41,7 @@ bool Client::Begin(std::string aHost, uint32_t aPort)
         return false;
     }
 
-    mConnection->Begin();
+    mConnection->Begin(nullptr);
 
     return true;
 }

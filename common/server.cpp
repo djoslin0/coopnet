@@ -12,6 +12,8 @@
 #include "mpacket.hpp"
 #include "utils.hpp"
 
+#define MAX_LOBBY_SIZE 16
+
 Server* gServer = NULL;
 
 StunTurnServer sStunServer = {
@@ -56,10 +58,11 @@ void Server::ReadTurnServers() {
     input.close();
 }
 
-bool Server::Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr))
+bool Server::Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr), uint64_t (*aDestIdFunction)(uint64_t aInput))
 {
-    // remember ban function pointer
+    // remember ban/destid function pointer
     mBanCheckFunction = aBanCheckFunction;
+    mDestIdFunction = aDestIdFunction;
 
     // read TURN servers
     ReadTurnServers();
@@ -139,7 +142,7 @@ void Server::Receive() {
         }
 
         // start connection
-        connection->Begin();
+        connection->Begin(mDestIdFunction);
 
         // check for ban
         if (mBanCheckFunction && mBanCheckFunction(connection->mDestinationId, connection->mAddressStr)) {
@@ -286,6 +289,11 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
     uint64_t lobbyId = mRng(mPrng);
     while (lobbyId == 0 || mLobbies.count(lobbyId) > 0) {
         lobbyId = mRng(mPrng);
+    }
+
+    // limit the lobby size
+    if (aMaxConnections > MAX_LOBBY_SIZE) {
+        aMaxConnections = MAX_LOBBY_SIZE;
     }
 
     // create the new lobby

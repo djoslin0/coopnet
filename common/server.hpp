@@ -25,11 +25,12 @@ class Server {
         int mLobbyCount = 0;
         int mPlayerCount = 0;
         bool (*mBanCheckFunction)(uint64_t aDestId, std::string aAddressStr) = nullptr;
+        uint64_t (*mDestIdFunction)(uint64_t aInput) = nullptr;
 
         void ReadTurnServers();
 
     public:
-        bool Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr));
+        bool Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr), uint64_t (*aDestIdFunction)(uint64_t aInput));
         void Receive();
         void Update();
 
