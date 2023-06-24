@@ -3,6 +3,7 @@
 #include <thread>
 #include <vector>
 #include <map>
+#include <set>
 #include <mutex>
 #include <random>
 #include <cstdint>
@@ -22,15 +23,16 @@ class Server {
         std::mt19937_64 mPrng;
         std::uniform_int_distribution<uint64_t> mRng;
         std::vector<StunTurnServer> mTurnServers;
+        std::set<uint64_t> mQueueDisconnects;
         int mLobbyCount = 0;
         int mPlayerCount = 0;
-        bool (*mBanCheckFunction)(uint64_t aDestId, std::string aAddressStr) = nullptr;
-        uint64_t (*mDestIdFunction)(uint64_t aInput) = nullptr;
+        bool mRefreshBans = false;
 
         void ReadTurnServers();
 
     public:
-        bool Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr), uint64_t (*aDestIdFunction)(uint64_t aInput));
+
+        bool Begin(uint32_t aPort);
         void Receive();
         void Update();
 
@@ -48,6 +50,9 @@ class Server {
 
         int PlayerCount();
         int LobbyCount();
+
+        void QueueDisconnect(uint64_t aUserId, bool aLockMutex);
+        void RefreshBans();
 };
 
 extern Server* gServer;

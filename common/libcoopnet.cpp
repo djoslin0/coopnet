@@ -8,11 +8,11 @@ bool coopnet_is_connected(void) {
     return (gClient && gClient->mConnection && gClient->mConnection->mActive);
 }
 
-CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort) {
+CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort, const char* aName, uint64_t aDestId) {
     if (gClient) { return COOPNET_OK; }
 
     gClient = new Client();
-    bool ret = gClient->Begin(aHost, aPort);
+    bool ret = gClient->Begin(aHost, aPort, aName, aDestId);
     
     if (!ret) {
         coopnet_shutdown();

@@ -30,7 +30,7 @@ int main(int argc, char const *argv[]) {
     // setup callbacks
     gCoopNetCallbacks.OnDisconnected = sOnDisconnected;
 
-    if (coopnet_begin(HOST, PORT) != COOPNET_OK) {
+    if (coopnet_begin(HOST, PORT, "example", 999) != COOPNET_OK) {
         LOG_ERROR("Failed to begin client");
         exit(EXIT_FAILURE);
     }
@@ -88,7 +88,7 @@ int main(int argc, char const *argv[]) {
             }
         } else if (words[0] == "connect") {
             gCoopNetCallbacks.OnDisconnected = sOnDisconnected;
-            coopnet_begin(HOST, PORT);
+            coopnet_begin(HOST, PORT, "example", 0);
             sThreadRecv = std::thread(sReceive);
             sThreadRecv.detach();
         } else if (words[0] == "disconnect") {

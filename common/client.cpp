@@ -14,7 +14,7 @@ Client::~Client() {
     }
 }
 
-bool Client::Begin(std::string aHost, uint32_t aPort)
+bool Client::Begin(std::string aHost, uint32_t aPort, std::string aName, uint64_t aDestId)
 {
     mConnection = new Connection(0);
 
@@ -35,13 +35,48 @@ bool Client::Begin(std::string aHost, uint32_t aPort)
     mConnection->mAddress.sin_addr.s_addr = GetAddrFromDomain(aHost);
     mConnection->mAddress.sin_port = htons(aPort);
 
-    // bind the socket to localhost port 8888
-    if (connect(mConnection->mSocket, (struct sockaddr*) &mConnection->mAddress, sizeof(struct sockaddr_in)) < 0) {
-        LOG_ERROR("Connect failed");
-        return false;
+    SocketSetOptions(mConnection->mSocket);
+    errno = 0;
+
+    int rc = connect(mConnection->mSocket, (struct sockaddr*) &mConnection->mAddress, sizeof(struct sockaddr_in));
+    if (rc < 0) {
+        rc = errno;
+        if (rc == EINPROGRESS || rc == 0) {
+            // Setup the timeout duration
+            struct timeval timeout;
+            timeout.tv_sec = 3;
+            timeout.tv_usec = 0;
+
+            // Setup the file descriptors to watch for write readiness
+            fd_set writeSet;
+            FD_ZERO(&writeSet);
+            FD_SET(mConnection->mSocket, &writeSet);
+
+            // Use select to wait for the socket to become writable or timeout
+            int selectResult = select(mConnection->mSocket + 1, nullptr, &writeSet, nullptr, &timeout);
+            if (selectResult == 0) {
+                LOG_ERROR("Connection timed out");
+                SocketClose(mConnection->mSocket);
+                return false;
+            } else if (selectResult < 0) {
+                LOG_ERROR("Error while waiting for connection");
+                SocketClose(mConnection->mSocket);
+                return false;
+            }
+        } else {
+            // Other error occurred during connect
+            LOG_ERROR("Connect failed: %u", rc);
+            SocketClose(mConnection->mSocket);
+            return false;
+        }
     }
 
     mConnection->Begin(nullptr);
+
+    MPacketInfo({
+        .destId = aDestId,
+        .infoBits = SocketGetInfoBits(mConnection->mSocket),
+    }, { aName }).Send(*mConnection);
 
     return true;
 }

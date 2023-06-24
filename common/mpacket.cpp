@@ -30,6 +30,8 @@ static MPacket* sPacketByType[MPACKET_MAX] = {
     new MPacketStunTurn(),
     new MPacketError(),
     new MPacketKeepAlive(),
+    new MPacketInfo(),
+    new MPacketLoadBalance(),
 };
 
 void MPacket::Send(Connection& connection) {
@@ -608,4 +610,22 @@ bool MPacketError::Receive(Connection* connection) {
 bool MPacketKeepAlive::Receive(Connection *connection) {
     LOG_INFO("[%" PRIu64 "] MPACKET_KEEP_ALIVE received", connection->mId);
     return true;
+}
+
+bool MPacketInfo::Receive(Connection *connection) {
+    std::string name = mStringData[0];
+    LOG_INFO("[%" PRIu64 "] MPACKET_INFO received: name '%s', destId %" PRIu64 ", infoBits %" PRIu64 "", connection->mId, name.c_str(), mData.destId, mData.infoBits);
+    if (gCoopNetCallbacks.OnReceiveInfoBits) {
+        gCoopNetCallbacks.OnReceiveInfoBits(connection, mData.destId, mData.infoBits, name.c_str());
+    }
+    return true;
+}
+
+bool MPacketLoadBalance::Receive(Connection *connection) {
+    std::string host = mStringData[0];
+    LOG_INFO("MPACKET_LOAD_BALANCE received: host %s, port %u", host.c_str(), mData.port);
+    if (gCoopNetCallbacks.OnLoadBalance) {
+        gCoopNetCallbacks.OnLoadBalance(host.c_str(), mData.port);
+    }
+    return false;
 }

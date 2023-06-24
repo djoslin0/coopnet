@@ -26,7 +26,7 @@ class Client {
 
         ~Client();
 
-        bool Begin(std::string aHost, uint32_t aPort);
+        bool Begin(std::string aHost, uint32_t aPort, std::string aName, uint64_t aDestId);
         void Update();
         void Disconnect();
 

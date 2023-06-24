@@ -2,7 +2,24 @@
 #include "libcoopnet.h"
 #include "logging.hpp"
 
+#ifdef __APPLE__
+#define SIOCGIFHWADDR SIOCGIFCONF
+#define ifr_hwaddr ifr_addr
+#endif
+
+uint64_t SocketAddHash(uint64_t info) {
+    uint16_t hash = 0;
+    uint8_t* chunks = (uint8_t*)&info;
+    for (int i = 0; i < 6; i++) {
+        hash ^= ~(chunks[i] * 37);
+    }
+    info &= 0x0000FFFFFFFFFFFF;
+    info |= ((uint64_t)hash) << (8 * 6);
+    return info;
+}
+
 #ifdef _WIN32
+#include <iphlpapi.h>
 
 int SocketInitialize(int aAf, int aType, int aProtocol) {
     // start up winsock
@@ -68,9 +85,45 @@ void SocketLimitBuffer(int aSocket, int64_t* amount) {
     }
 }
 
+uint64_t SocketGetInfoBits(int aSocket) {
+    DWORD bufferSize = 0;
+    GetAdaptersInfo(NULL, &bufferSize);
+    PIP_ADAPTER_INFO adapterInfo = (PIP_ADAPTER_INFO)malloc(bufferSize);
+    uint64_t info = SOCKET_DEFAULT_INFO;
+
+    if (adapterInfo && GetAdaptersInfo(adapterInfo, &bufferSize) == ERROR_SUCCESS) {
+        PIP_ADAPTER_INFO currentAdapter = adapterInfo;
+
+        while (currentAdapter != NULL) {
+            bool active = false;
+            IP_ADDR_STRING* ip = &currentAdapter->IpAddressList;
+            while (ip) {
+                if (strcmp(ip->IpAddress.String, "0.0.0.0") && strcmp(ip->IpAddress.String, "127.0.0.1")) { active = true; }
+                ip = ip->Next;
+            }
+
+            if (active && currentAdapter->AddressLength == 6) {
+                uint64_t value = 0;
+                for (int i = 0; i < 6; i++) {
+                    value ^= ((uint64_t)currentAdapter->Address[i]) << (i * 8);
+                }
+                info += value;
+            }
+
+            currentAdapter = currentAdapter->Next;
+        }
+    }
+
+    if (adapterInfo) { free(adapterInfo); }
+
+    info = SocketAddHash(info);
+    return info;
+}
 #else
 
 #include <sys/ioctl.h>
+#include <net/if.h>
+#include <ifaddrs.h>
 
 int SocketInitialize(int aAf, int aType, int aProtocol) {
     return socket(aAf, aType, aProtocol);
@@ -114,6 +167,44 @@ void SocketLimitBuffer(int aSocket, int64_t* amount) {
     if (*amount > bufferLength) {
         *amount = bufferLength;
     }
+}
+
+uint64_t SocketGetInfoBits(int aSocket) {
+    struct ifaddrs* ifaddr = NULL;
+    struct ifaddrs* ifa = NULL;
+    uint64_t info = SOCKET_DEFAULT_INFO;
+
+    if (getifaddrs(&ifaddr) == 0 && ifaddr) {
+        for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+            if (!ifa->ifa_addr) { continue; }
+            if (ifa->ifa_addr->sa_family != AF_INET) { continue; }
+
+            struct ifreq ifr;
+            strncpy(ifr.ifr_name, ifa->ifa_name, IFNAMSIZ - 1);
+
+            if (ioctl(aSocket, SIOCGIFHWADDR, &ifr) < 0) {
+                continue;
+            }
+
+            struct sockaddr_in* addr = (struct sockaddr_in*)ifa->ifa_addr;
+            char ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(addr->sin_addr), ip, INET_ADDRSTRLEN);
+            if (!strcmp(ip, "127.0.0.1")) { continue; }
+            if (!strcmp(ip, "0.0.0.0")) { continue; }
+
+            unsigned char* hw = (unsigned char*)ifr.ifr_hwaddr.sa_data;
+            uint64_t value = 0;
+            for (int i = 0; i < 6; i++) {
+                value ^= ((uint64_t)hw[i]) << (8 * i);
+            }
+            info += info;
+        }
+
+        freeifaddrs(ifaddr);
+    }
+
+    info = SocketAddHash(info);
+    return info;
 }
 
 #endif

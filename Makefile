@@ -8,9 +8,10 @@ LOGGING ?= 0
 #################
 
 CXX = g++
-CXXFLAGS = -Wall -Werror -Wno-unused-function -Wno-nonnull-compare -std=c++11 -fPIC -DJUICE_STATIC -g
+CXXFLAGS = -Wall -Werror -Wno-unused-function -std=c++11 -fPIC -DJUICE_STATIC -g
 INCLUDES = -Icommon -Ilib/include
 LDFLAGS = -pthread
+SERVER_LIBS = -lcurl
 
 COMMON_SRC := $(wildcard common/*.cpp)
 COMMON_OBJ := $(patsubst common/%.cpp, bin/o/common/%.o, $(COMMON_SRC))
@@ -18,7 +19,7 @@ COMMON_OBJ := $(patsubst common/%.cpp, bin/o/common/%.o, $(COMMON_SRC))
 CLIENT_SRC = $(wildcard client/*.cpp) $(COMMON_SRC)
 CLIENT_OBJ = $(patsubst %.cpp, bin/o/%.o, $(CLIENT_SRC))
 
-SERVER_SRC = $(wildcard server/*.cpp) $(COMMON_SRC)
+SERVER_SRC = $(wildcard server/*.cpp) $(wildcard server/extra/*.cpp) $(COMMON_SRC)
 SERVER_OBJ = $(patsubst %.cpp, bin/o/%.o, $(SERVER_SRC))
 
 BIN_DIR = bin
@@ -27,7 +28,7 @@ LIBS = -l:libjuice.a
 DYNLIB_NAME = libcoopnet.so
 
 ifeq ($(OS),Windows_NT)
-  LIBS += -lws2_32 -lbcrypt
+  LIBS += -lws2_32 -liphlpapi -lbcrypt
   ifeq ($(shell uname -m),x86_64)
     LIB_DIR := lib/win64
   else
@@ -41,6 +42,7 @@ else ifeq ($(OSX_BUILD),1)
   LIBS := -l juice
   LDFLAGS += -rpath . -dynamiclib -install_name @rpath/$(DYNLIB_NAME)
 else
+  CXXFLAGS += -Wno-nonnull-compare
   LIB_DIR := lib/linux
 endif
 
@@ -56,7 +58,7 @@ client: $(CLIENT_OBJ) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(CLIENT_OBJ) $(LIBS)
 
 server: $(SERVER_OBJ) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -L$(LIB_DIR) $(LDFLAGS) -o $(BIN_DIR)/$@ $(SERVER_OBJ) $(LIBS) $(SERVER_LIBS)
 
 lib: $(CLIENT_OBJ) | $(BIN_DIR)
 	ar rcs $(BIN_DIR)/libcoopnet.a $(COMMON_OBJ)
@@ -73,6 +75,7 @@ $(BIN_DIR):
 	mkdir -p $(BIN_DIR)/o
 	mkdir -p $(BIN_DIR)/o/client
 	mkdir -p $(BIN_DIR)/o/server
+	mkdir -p $(BIN_DIR)/o/server/extra
 	mkdir -p $(BIN_DIR)/o/common
 
 clean:

@@ -17,6 +17,8 @@ class Connection {
         bool mIntentionalDisconnect = false;
         uint64_t mId = 0;
         uint64_t mDestinationId = 0;
+        uint64_t mInfoBits = 0;
+        bool mUpdated = false;
         int mSocket = 0;
         struct sockaddr_in mAddress = { 0};
         Lobby* mLobby = nullptr;

@@ -1,7 +1,7 @@
 #include <iostream>
 #include "server.hpp"
 #include "metrics.hpp"
-#include "bansystem.hpp"
+#include "extra/server_extra.hpp"
 #include "sha2.hpp"
 
 #define PORT 34197
@@ -9,17 +9,21 @@
 
 int main(int argc, char *argv[]) {
     Metrics metrics;
-    ban_system_init();
 
     gServer = new Server();
-    if (!gServer->Begin(PORT, ban_system_is_banned, sha224_u64)) {
+
+    server_extra_init();
+    gCoopNetCallbacks.DestIdFunction = sha224_u64;
+
+    if (!gServer->Begin(PORT)) {
         exit(EXIT_FAILURE);
     }
 
     while (true) {
         metrics.Update(gServer->LobbyCount(), gServer->PlayerCount());
-        ban_system_update();
+        server_extra_update();
         std::this_thread::sleep_for(std::chrono::milliseconds(60 * 1000));
     }
+
     return 0;
 }

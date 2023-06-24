@@ -68,7 +68,7 @@ void Connection::Update() {
     // just to keep the connection alive
     std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
     uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
-    if ((mLastSendTime + CONNECTION_KEEP_ALIVE_SECS) < now && this != nullptr) {
+    if ((mLastSendTime + CONNECTION_KEEP_ALIVE_SECS) < now) {
         MPacketKeepAlive({ 0 }).Send(*this);
     }
 }

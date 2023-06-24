@@ -42,12 +42,15 @@ enum MPacketErrorNumber Lobby::Join(Connection* aConnection, std::string& aPassw
     if (!aConnection) { return MERR_LOBBY_JOIN_FAILED; }
     if (aConnection->mLobby == this) { return MERR_NONE; }
 
+    // make sure people are updated
+    if (mOwner->mUpdated && !aConnection->mUpdated) { return MERR_LOBBY_JOIN_FAILED; }
+
     // leave older lobby
     if (aConnection->mLobby != nullptr) {
         aConnection->mLobby->Leave(aConnection);
     }
 
-    // find out if we're already in this
+    // make sure there's room
     if (mConnections.size() >= mMaxConnections) {
         return MERR_LOBBY_JOIN_FULL;
     }

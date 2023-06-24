@@ -30,6 +30,8 @@ enum MPacketType {
     MPACKET_STUN_TURN,
     MPACKET_ERROR,
     MPACKET_KEEP_ALIVE,
+    MPACKET_INFO,
+    MPACKET_LOAD_BALANCE,
     MPACKET_MAX,
 };
 
@@ -133,6 +135,15 @@ typedef struct {
 typedef struct {
     uint64_t lobbyId;
 } MPacketLobbyUpdateData;
+
+typedef struct {
+    uint64_t destId;
+    uint64_t infoBits;
+} MPacketInfoData;
+
+typedef struct {
+    uint32_t port;
+} MPacketLoadBalanceData;
 
 #pragma pack()
 
@@ -382,6 +393,28 @@ class MPacketKeepAlive : public MPacketImpl<MPacketErrorData> {
             .packetType = MPACKET_KEEP_ALIVE,
             .stringCount = 0,
             .sendType = MSEND_TYPE_BOTH
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketInfo : public MPacketImpl<MPacketInfoData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_INFO,
+            .stringCount = 1,
+            .sendType = MSEND_TYPE_CLIENT
+        };}
+        bool Receive(Connection* connection) override;
+};
+
+class MPacketLoadBalance : public MPacketImpl<MPacketLoadBalanceData> {
+    public:
+        using MPacketImpl::MPacketImpl;
+        MPacketImplSettings GetImplSettings() override { return {
+            .packetType = MPACKET_LOAD_BALANCE,
+            .stringCount = 1,
+            .sendType = MSEND_TYPE_SERVER
         };}
         bool Receive(Connection* connection) override;
 };

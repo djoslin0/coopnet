@@ -58,12 +58,7 @@ void Server::ReadTurnServers() {
     input.close();
 }
 
-bool Server::Begin(uint32_t aPort, bool (*aBanCheckFunction)(uint64_t aDestId, std::string aAddressStr), uint64_t (*aDestIdFunction)(uint64_t aInput))
-{
-    // remember ban/destid function pointer
-    mBanCheckFunction = aBanCheckFunction;
-    mDestIdFunction = aDestIdFunction;
-
+bool Server::Begin(uint32_t aPort) {
     // read TURN servers
     ReadTurnServers();
 
@@ -142,37 +137,33 @@ void Server::Receive() {
         }
 
         // start connection
-        connection->Begin(mDestIdFunction);
+        connection->Begin(gCoopNetCallbacks.DestIdFunction);
 
-        // check for ban
-        if (mBanCheckFunction && mBanCheckFunction(connection->mDestinationId, connection->mAddressStr)) {
-            LOG_INFO("[%" PRIu64 "] Connecting player is banned %" PRIu64 ", %s!", connection->mId, connection->mDestinationId, connection->mAddressStr.c_str());
-            if (connection->mSocket) { SocketClose(connection->mSocket); }
-            delete connection;
-            continue;
-        }
+        // check if connection is allowed
+        if (gCoopNetCallbacks.ConnectionIsAllowed && !gCoopNetCallbacks.ConnectionIsAllowed(connection, true)) {
+            QueueDisconnect(connection->mId, true);
+        } else {
+            // send join packet
+            MPacketJoined({
+                .userId = connection->mId,
+                .version = MPACKET_PROTOCOL_VERSION
+            }).Send(*connection);
 
-        // send join packet
-        MPacketJoined({
-            .userId = connection->mId,
-            .version = MPACKET_PROTOCOL_VERSION
-        }).Send(*connection);
-
-        // send stun server
-        MPacketStunTurn(
-            { .isStun = true, .port = sStunServer.port },
-            { sStunServer.host, sStunServer.username, sStunServer.password }
-        ).Send(*connection);
-
-        // send turn servers
-        std::shuffle(mTurnServers.begin(), mTurnServers.end(), mPrng);
-        for (auto& it : mTurnServers) {
+            // send stun server
             MPacketStunTurn(
-                { .isStun = false, .port = it.port },
-                { it.host, it.username, it.password }
+                { .isStun = true, .port = sStunServer.port },
+                { sStunServer.host, sStunServer.username, sStunServer.password }
             ).Send(*connection);
-        }
 
+            // send turn servers
+            std::shuffle(mTurnServers.begin(), mTurnServers.end(), mPrng);
+            for (auto& it : mTurnServers) {
+                MPacketStunTurn(
+                    { .isStun = false, .port = it.port },
+                    { it.host, it.username, it.password }
+                ).Send(*connection);
+            }
+        }
         // remember connection
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
         mConnections[connection->mId] = connection;
@@ -185,6 +176,7 @@ void Server::Update() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         std::lock_guard<std::mutex> guard(mConnectionsMutex);
         int players = 0;
+        size_t queueDisconnectCount = mQueueDisconnects.size();
         for (auto it = mConnections.begin(); it != mConnections.end(); ) {
             Connection* connection = it->second;
             // erase the connection if it's inactive, otherwise receive packets
@@ -192,7 +184,9 @@ void Server::Update() {
                 if (connection->mActive && connection->mLobby != nullptr) {
                     players++;
                 }
-
+                if (mRefreshBans && gCoopNetCallbacks.ConnectionIsAllowed && !gCoopNetCallbacks.ConnectionIsAllowed(connection, false)) {
+                    connection->Disconnect(true);
+                }
                 if (!connection->mActive) {
                     LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
                     delete connection;
@@ -202,9 +196,17 @@ void Server::Update() {
                     connection->Receive();
                     connection->Update();
                 }
+                if (mQueueDisconnects.count(connection->mId) > 0) {
+                    connection->Disconnect(true);
+                }
             }
             ++it;
         }
+
+        if (queueDisconnectCount == mQueueDisconnects.size()) {
+            mQueueDisconnects.clear();
+        }
+        mRefreshBans = false;
 
         mPlayerCount = players;
         fflush(stdout);
@@ -350,4 +352,20 @@ int Server::PlayerCount() {
 
 int Server::LobbyCount() {
     return mLobbyCount;
+}
+
+void Server::QueueDisconnect(uint64_t aUserId, bool aLockMutex) {
+    if (aLockMutex) {
+        std::lock_guard<std::mutex> guard(mConnectionsMutex);
+        if (mQueueDisconnects.count(aUserId)) { return; }
+        mQueueDisconnects.insert(aUserId);
+    } else {
+        if (mQueueDisconnects.count(aUserId)) { return; }
+        mQueueDisconnects.insert(aUserId);
+    }
+}
+
+void Server::RefreshBans() {
+    std::lock_guard<std::mutex> guard(mConnectionsMutex);
+    mRefreshBans = true;
 }

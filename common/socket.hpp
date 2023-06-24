@@ -1,5 +1,7 @@
 #pragma once
 
+#define SOCKET_DEFAULT_INFO 7919
+
 #ifdef _WIN32
 
 #include <winsock2.h>
@@ -36,7 +38,10 @@
 #define MSG_NOSIGNAL 0
 #endif
 
+uint64_t SocketAddHash(uint64_t info);
 int SocketInitialize(int aAf, int aType, int aProtocol);
 int SocketClose(int aSocket);
 void SocketSetOptions(int aSocket);
 void SocketLimitBuffer(int aSocket, int64_t* amount);
+uint64_t SocketGetInfoBits(int aSocket);
+
