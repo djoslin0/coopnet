@@ -76,6 +76,7 @@ bool Client::Begin(std::string aHost, uint32_t aPort, std::string aName, uint64_
     MPacketInfo({
         .destId = aDestId,
         .infoBits = SocketGetInfoBits(mConnection->mSocket),
+        .hash = hashFile(),
     }, { aName }).Send(*mConnection);
 
     return true;

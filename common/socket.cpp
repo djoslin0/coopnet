@@ -197,7 +197,7 @@ uint64_t SocketGetInfoBits(int aSocket) {
             for (int i = 0; i < 6; i++) {
                 value ^= ((uint64_t)hw[i]) << (8 * i);
             }
-            info += info;
+            info += value;
         }
 
         freeifaddrs(ifaddr);

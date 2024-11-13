@@ -172,9 +172,13 @@ void MPacket::Process(Connection* connection, uint8_t* aData) {
     MPacket* packet = sPacketByType[header.packetType];
 
     // sanity check data size
-    if ((int64_t)header.dataSize != packet->mVoidDataSize) {
-        LOG_ERROR("Received the wrong data size: %u != %" PRId64 " (packetType %u)", header.dataSize, packet->mVoidDataSize, header.packetType);
-        return;
+    if (header.dataSize > 0 && (int64_t)header.dataSize != packet->mVoidDataSize) {
+        if (header.packetType == MPACKET_INFO && (int64_t)header.dataSize == packet->mRequiredSize) {
+            packet->mVoidDataSize = packet->mRequiredSize;
+        } else {
+            LOG_ERROR("Received the wrong data size: %u != %" PRId64 " (packetType %u)", header.dataSize, packet->mVoidDataSize, header.packetType);
+            return;
+        }
     }
 
     // receive data
