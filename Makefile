@@ -36,10 +36,15 @@ ifeq ($(OS),Windows_NT)
     CXXFLAGS += -Wno-error=format
   endif
 else ifeq ($(OSX_BUILD),1)
-  CXXFLAGS += -DOSX_BUILD=1
-  LIB_DIR := ./lib/mac
+  # macOS defines sprintf as unsafe, and refuses to compile further, so add this flag to ignore it
+  CXXFLAGS += -DOSX_BUILD=1 -Wno-error=deprecated-declarations
+  ifeq ($(shell arch),arm64)
+    LIB_DIR := lib/mac-arm
+  else
+    LIB_DIR := lib/mac-intel
+  endif
   DYNLIB_NAME := libcoopnet.dylib
-  LIBS := -l juice
+  LIBS := -ljuice
   LDFLAGS += -rpath . -dynamiclib -install_name @rpath/$(DYNLIB_NAME)
 else
   CXXFLAGS += -Wno-nonnull-compare
