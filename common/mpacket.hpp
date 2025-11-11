@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #define MPACKET_PROTOCOL_VERSION 4
@@ -139,6 +140,7 @@ typedef struct {
 typedef struct {
     uint64_t destId;
     uint64_t infoBits;
+    std::size_t hash;
 } MPacketInfoData;
 
 typedef struct {
@@ -158,6 +160,7 @@ class MPacket {
     protected:
         void* mVoidData = NULL;
         int64_t mVoidDataSize = 0;
+        int64_t mRequiredSize = 0;
         std::vector<std::string> mStringData;
 
     public:
@@ -400,6 +403,7 @@ class MPacketKeepAlive : public MPacketImpl<MPacketErrorData> {
 class MPacketInfo : public MPacketImpl<MPacketInfoData> {
     public:
         using MPacketImpl::MPacketImpl;
+        MPacketInfo() : MPacketImpl() { mRequiredSize = mVoidDataSize - sizeof(std::size_t); }
         MPacketImplSettings GetImplSettings() override { return {
             .packetType = MPACKET_INFO,
             .stringCount = 1,

@@ -13,7 +13,7 @@ CoopNetRc coopnet_begin(const char* aHost, uint32_t aPort, const char* aName, ui
 
     gClient = new Client();
     bool ret = gClient->Begin(aHost, aPort, aName, aDestId);
-    
+
     if (!ret) {
         coopnet_shutdown();
         coopnet_update();

@@ -11,7 +11,8 @@
 #include "logging.hpp"
 #include "utils.hpp"
 
-#define PEER_TIMEOUT 45.0f /* 45 seconds */
+// Set to true to force TURN / relay usage for testing
+static bool sForceRelay = false;
 
 static void sOnCandidate(juice_agent_t *agent, const char *sdp, void *user_ptr) { reinterpret_cast<Peer*>(user_ptr)->OnCandidate(sdp); }
 static void sOnGatheringDone(juice_agent_t *agent, void *user_ptr) { reinterpret_cast<Peer*>(user_ptr)->OnGatheringDone(); }
@@ -58,7 +59,11 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     mTimeout = clock_elapsed() + PEER_TIMEOUT;
     mControlling = (gClient->mCurrentUserId < mId);
 
+#ifdef LOGGING
+    juice_set_log_level(JUICE_LOG_LEVEL_DEBUG);
+#else
     juice_set_log_level(JUICE_LOG_LEVEL_NONE);
+#endif
 
     // Agent 1: Create agent
     juice_config_t config;
@@ -70,7 +75,7 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     LOG_INFO("STUN server: %s, %u", config.stun_server_host, config.stun_server_port);
 
     // TURN server example (use your own server in production)
-    if (mControlling) {
+    if (aClient->mTurnServers.size() > 0) {
         mTurnServers = (juice_turn_server_t*)calloc(aClient->mTurnServers.size(), sizeof(juice_turn_server_t));
         if (!mTurnServers) {
             config.turn_servers = nullptr;
@@ -106,6 +111,13 @@ Peer::Peer(Client* aClient, uint64_t aId, uint32_t aPriority) {
     }
 }
 
+Peer::~Peer() {
+    if (mTurnServers) {
+        free(mTurnServers);
+        mTurnServers = nullptr;
+    }
+}
+
 void Peer::Update() {
     // Check for peer connection fail
     if (!mConnected && mPriority >= gClient->mCurrentPriority) {
@@ -123,6 +135,7 @@ void Peer::Update() {
 }
 
 void Peer::Connect(const char* aSdp) {
+    LOG_INFO("\n\nReceive SDP (%" PRIu64 "):\n------------------\n%s\n------------------\n", mId, aSdp);
     juice_set_remote_description(mAgent, aSdp);
     if (mControlling) {
         juice_gather_candidates(mAgent);
@@ -136,7 +149,7 @@ void Peer::Connect(const char* aSdp) {
 
 void Peer::SendSdp() {
     juice_get_local_description(mAgent, mSdp, JUICE_MAX_SDP_STRING_LEN);
-    LOG_INFO("Local description (%" PRIu64 "):\n%s\n", mId, mSdp);
+    LOG_INFO("\n\nSend SDP (%" PRIu64 "):\n------------------\n%s\n------------------\n", mId, mSdp);
 
     MPacketPeerSdp(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
@@ -158,12 +171,16 @@ void Peer::Disconnect() {
         LOG_INFO("Peer disconnect %" PRIu64 "", mId);
         juice_destroy(mAgent);
         mAgent = nullptr;
-        mTurnServers = nullptr;
+        if (mTurnServers) {
+            free(mTurnServers);
+            mTurnServers = nullptr;
+        }
         mConnected = false;
     }
 }
 
 void Peer::CandidateAdd(const char* aSdp) {
+    LOG_INFO("\n\nReceive Candidate (%" PRIu64 "):\n------------------\n%s\n------------------\n", mId, aSdp);
     juice_add_remote_candidate(mAgent, aSdp);
 }
 
@@ -192,9 +209,7 @@ void Peer::OnStateChanged(juice_state_t aState) {
             LOG_INFO("Local candidate : %s\n", local);
             LOG_INFO("Remote candidate: %s\n", remote);
 
-            if (mControlling && strstr(local, "relay") != NULL) {
-                LOG_INFO("Using TURN relay server");
-            } else if (!mControlling && strstr(remote, "relay") != NULL) {
+            if (strstr(local, "relay") != NULL || strstr(remote, "relay") != NULL) {
                 LOG_INFO("Using TURN relay server");
             }
         }
@@ -217,20 +232,21 @@ void Peer::OnStateChanged(juice_state_t aState) {
 void Peer::OnCandidate(const char* aSdp) {
     LOG_INFO("Candidate (%" PRIu64 "): %s", mId, aSdp);
 
-    // Uncomment to force a TURN connection
-    /*
-    if (mControlling) {
-        if (!strstr(aSdp, "relay")) {
-            LOG_INFO("Rejecting non-relay!");
-            return;
+    if (sForceRelay) {
+        if (mControlling) {
+            if (!strstr(aSdp, "relay")) {
+                LOG_INFO("Rejecting non-relay!");
+                return;
+            }
+        } else {
+            if (!strstr(aSdp, "srflx")) {
+                LOG_INFO("Rejecting non-srflx!");
+                return;
+            }
         }
-    } else {
-        if (!strstr(aSdp, "srflx")) {
-            LOG_INFO("Rejecting non-srflx!");
-            return;
-        }
-    }*/
+    }
 
+    LOG_INFO("\n\nSend Candidate (%" PRIu64 "):\n------------------\n%s\n------------------\n", mId, aSdp);
     MPacketPeerCandidate(
         { .lobbyId = gClient->mCurrentLobbyId, .userId = mId },
         { aSdp }

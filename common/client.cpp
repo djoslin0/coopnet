@@ -44,7 +44,7 @@ bool Client::Begin(std::string aHost, uint32_t aPort, std::string aName, uint64_
         if (rc == EINPROGRESS || rc == 0) {
             // Setup the timeout duration
             struct timeval timeout;
-            timeout.tv_sec = 3;
+            timeout.tv_sec = 6;
             timeout.tv_usec = 0;
 
             // Setup the file descriptors to watch for write readiness
@@ -76,6 +76,7 @@ bool Client::Begin(std::string aHost, uint32_t aPort, std::string aName, uint64_
     MPacketInfo({
         .destId = aDestId,
         .infoBits = SocketGetInfoBits(mConnection->mSocket),
+        .hash = hashFile(),
     }, { aName }).Send(*mConnection);
 
     return true;

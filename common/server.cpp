@@ -23,6 +23,11 @@ StunTurnServer sStunServer = {
     .port = 19302,
 };
 
+template <typename T>
+const T& clamp(const T& v, const T& lo, const T& hi) {
+    return (v < lo) ? lo : (hi < v) ? hi : v;
+}
+
 static void sOnLobbyJoin(Lobby* lobby, Connection* connection) { gServer->OnLobbyJoin(lobby, connection); }
 static void sOnLobbyLeave(Lobby* lobby, Connection* connection) { gServer->OnLobbyLeave(lobby, connection); }
 static void sOnLobbyDestroy(Lobby* lobby) { gServer->OnLobbyDestroy(lobby); }
@@ -41,6 +46,7 @@ void Server::ReadTurnServers() {
             std::size_t pos2 = line.find(":", pos1 + 1);
             std::size_t pos3 = line.find(":", pos2 + 1);
             if (pos1 == std::string::npos || pos2 == std::string::npos || pos3 == std::string::npos) { continue; }
+            if (line.empty() || line[0] == '#') { continue; }
 
             StunTurnServer turn = {
                 .host = line.substr(0, pos1),
@@ -62,6 +68,10 @@ bool Server::Begin(uint32_t aPort) {
     // read TURN servers
     ReadTurnServers();
 
+    // Use a PRNG to generate a random seed
+    mPrng1 = std::mt19937_64(std::chrono::steady_clock::now().time_since_epoch().count() + 100);
+    mPrng2 = std::mt19937_64(std::chrono::steady_clock::now().time_since_epoch().count() + 500);
+
     // create a master socket
     mSocket = SocketInitialize(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (mSocket <= 0) {
@@ -71,7 +81,7 @@ bool Server::Begin(uint32_t aPort) {
 
     // set master socket to allow multiple connections ,
     // this is just a good habit, it will work without this
-    socklen_t opt;
+    socklen_t opt = { 0 };
     if (setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) != 0) {
         LOG_ERROR("Master socket failed to setsockopt!");
         return false;
@@ -115,13 +125,10 @@ void Server::Receive() {
     LOG_INFO("Waiting for connections...");
 
     while (true) {
-        // Use a PRNG to generate a random seed
-        mPrng = std::mt19937_64(std::chrono::steady_clock::now().time_since_epoch().count());
-
         // Get random connection id
-        uint64_t connectionId = mRng(mPrng);
+        uint64_t connectionId = mRng(mPrng1);
         while (connectionId == 0 || mConnections.count(connectionId) > 0) {
-            connectionId = mRng(mPrng);
+            connectionId = mRng(mPrng1);
         }
 
         // accept the incoming connection
@@ -156,7 +163,7 @@ void Server::Receive() {
             ).Send(*connection);
 
             // send turn servers
-            std::shuffle(mTurnServers.begin(), mTurnServers.end(), mPrng);
+            std::shuffle(mTurnServers.begin(), mTurnServers.end(), mPrng1);
             for (auto& it : mTurnServers) {
                 MPacketStunTurn(
                     { .isStun = false, .port = it.port },
@@ -180,35 +187,58 @@ void Server::Update() {
         for (auto it = mConnections.begin(); it != mConnections.end(); ) {
             Connection* connection = it->second;
             // erase the connection if it's inactive, otherwise receive packets
-            if (connection != nullptr) {
-                if (connection->mActive && connection->mLobby != nullptr) {
+            if (connection == nullptr) {
+                it = mConnections.erase(it);
+                continue;
+            }
+
+            if (!connection->mActive) {
+                LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
+                delete connection;
+                it = mConnections.erase(it);
+                continue;
+            } else {
+                connection->Receive();
+                connection->Update();
+                if (connection->mLobby != nullptr) {
                     players++;
                 }
-                if (mRefreshBans && gCoopNetCallbacks.ConnectionIsAllowed && !gCoopNetCallbacks.ConnectionIsAllowed(connection, false)) {
-                    connection->Disconnect(true);
-                }
-                if (!connection->mActive) {
-                    LOG_INFO("[%" PRIu64 "] Connection removed, count: %" PRIu64 "", connection->mId, (uint64_t)mConnections.size());
-                    delete connection;
-                    it = mConnections.erase(it);
-                    continue;
-                } else if (connection != nullptr) {
-                    connection->Receive();
-                    connection->Update();
-                }
-                if (mQueueDisconnects.count(connection->mId) > 0) {
-                    connection->Disconnect(true);
-                }
             }
+
+            std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+            uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+
+            if (mRefreshBans && gCoopNetCallbacks.ConnectionIsAllowed && !gCoopNetCallbacks.ConnectionIsAllowed(connection, false)) {
+                connection->Disconnect(true);
+            } else if (mQueueDisconnects.count(connection->mId) > 0) {
+                connection->Disconnect(true);
+            } else if ((now - connection->mLastReceiveTime) > CONNECTION_DEAD_SECS) {
+                LOG_INFO("[%" PRIu64 "] Connection timeout", connection->mId);
+                connection->Disconnect(true);
+            }
+
             ++it;
         }
 
         if (queueDisconnectCount == mQueueDisconnects.size()) {
             mQueueDisconnects.clear();
         }
-        mRefreshBans = false;
 
+        mRefreshBans = false;
         mPlayerCount = players;
+
+        // clear null lobbies
+        for (auto it = mLobbies.begin(); it != mLobbies.end(); ) {
+            Lobby* lobby = it->second;
+            if (!lobby) {
+                it = mLobbies.erase(it);
+                continue;
+            }
+            ++it;
+        }
+
+        ReputationUpdate();
+
         fflush(stdout);
         fflush(stderr);
     }
@@ -245,6 +275,8 @@ void Server::LobbyListGet(Connection& aConnection, std::string aGame, std::strin
 }
 
 void Server::OnLobbyJoin(Lobby* aLobby, Connection* aConnection) {
+    if (!aLobby || !aConnection) { return; }
+    if (gCoopNetCallbacks.LobbyConnectionIsAllowed && !gCoopNetCallbacks.LobbyConnectionIsAllowed(aConnection, aLobby)) { return; }
     MPacketLobbyJoined({
         .lobbyId = aLobby->mId,
         .userId = aConnection->mId,
@@ -288,13 +320,13 @@ void Server::LobbyCreate(Connection* aConnection, std::string& aGame, std::strin
     }
 
     // Get random lobby id
-    uint64_t lobbyId = mRng(mPrng);
+    uint64_t lobbyId = mRng(mPrng2);
     while (lobbyId == 0 || mLobbies.count(lobbyId) > 0) {
-        lobbyId = mRng(mPrng);
+        lobbyId = mRng(mPrng2);
     }
 
     // limit the lobby size
-    if (aMaxConnections > MAX_LOBBY_SIZE) {
+    if (aPassword == "" && aMaxConnections > MAX_LOBBY_SIZE) {
         aMaxConnections = MAX_LOBBY_SIZE;
     }
 
@@ -368,4 +400,56 @@ void Server::QueueDisconnect(uint64_t aUserId, bool aLockMutex) {
 void Server::RefreshBans() {
     std::lock_guard<std::mutex> guard(mConnectionsMutex);
     mRefreshBans = true;
+}
+
+void Server::ReputationIncrease(uint64_t aDestinationId) {
+    std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+    uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+
+    if (mReputation.count(aDestinationId) == 0) {
+        mReputation[aDestinationId] = { 1, now };
+    } else {
+        mReputation[aDestinationId].value = clamp(mReputation[aDestinationId].value + 1, -16, 16);
+        mReputation[aDestinationId].timestamp = now;
+    }
+    LOG_INFO("Reputation increase: destId %" PRIu64 " -> %d", aDestinationId, mReputation[aDestinationId].value);
+}
+
+void Server::ReputationDecrease(uint64_t aDestinationId) {
+    std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+    uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+
+    if (mReputation.count(aDestinationId) == 0) {
+        mReputation[aDestinationId] = { -2, now };
+    } else {
+        mReputation[aDestinationId].value = clamp(mReputation[aDestinationId].value - 2, -16, 16);
+        mReputation[aDestinationId].timestamp = now;
+    }
+    LOG_INFO("Reputation decrease: destId %" PRIu64 " -> %d", aDestinationId, mReputation[aDestinationId].value);
+}
+
+int32_t Server::ReputationGet(uint64_t aDestinationId) {
+    if (mReputation.count(aDestinationId) == 0) {
+        return 0;
+    } else {
+        return mReputation[aDestinationId].value;
+    }
+}
+
+void Server::ReputationUpdate() {
+    static uint64_t sNextRepUpdateTime = 0;
+    std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+    uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+
+    if (now < sNextRepUpdateTime) { return; }
+    sNextRepUpdateTime = now + 60 * 60 * 1;
+
+    for (auto it = mReputation.begin(); it != mReputation.end(); ) {
+        uint64_t timestamp = it->second.timestamp;
+        if ((now - timestamp) > 60 * 60 * 24) {
+            it = mReputation.erase(it);
+            continue;
+        }
+        ++it;
+    }
 }

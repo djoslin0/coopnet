@@ -3,6 +3,8 @@
 #include "logging.hpp"
 
 #ifdef __APPLE__
+#include <net/if_dl.h>
+
 #define SIOCGIFHWADDR SIOCGIFCONF
 #define ifr_hwaddr ifr_addr
 #endif
@@ -177,6 +179,7 @@ uint64_t SocketGetInfoBits(int aSocket) {
     if (getifaddrs(&ifaddr) == 0 && ifaddr) {
         for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
             if (!ifa->ifa_addr) { continue; }
+#ifdef __linux__
             if (ifa->ifa_addr->sa_family != AF_INET) { continue; }
 
             struct ifreq ifr;
@@ -193,11 +196,20 @@ uint64_t SocketGetInfoBits(int aSocket) {
             if (!strcmp(ip, "0.0.0.0")) { continue; }
 
             unsigned char* hw = (unsigned char*)ifr.ifr_hwaddr.sa_data;
+#elif defined(__APPLE__)
+            if (ifa->ifa_addr->sa_family != AF_LINK) { continue; }
+
+            struct sockaddr_dl* sdl = (struct sockaddr_dl*)ifa->ifa_addr;
+            if (sdl->sdl_alen != 6) { continue; }
+
+            const unsigned char* hw = (unsigned char*)LLADDR(sdl);
+#endif
+
             uint64_t value = 0;
             for (int i = 0; i < 6; i++) {
                 value ^= ((uint64_t)hw[i]) << (8 * i);
             }
-            info += info;
+            info += value;
         }
 
         freeifaddrs(ifaddr);

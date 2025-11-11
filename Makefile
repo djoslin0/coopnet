@@ -2,6 +2,8 @@
 # Build options #
 #################
 
+OSX_INTEL ?= 0
+OSX_ARM ?= 0
 OSX_BUILD ?= 0
 LOGGING ?= 0
 
@@ -35,15 +37,25 @@ ifeq ($(OS),Windows_NT)
     LIB_DIR := lib/win32
     CXXFLAGS += -Wno-error=format
   endif
-else ifeq ($(OSX_BUILD),1)
-  CXXFLAGS += -DOSX_BUILD=1
-  LIB_DIR := ./lib/mac
-  DYNLIB_NAME := libcoopnet.dylib
-  LIBS := -l juice
-  LDFLAGS += -rpath . -dynamiclib -install_name @rpath/$(DYNLIB_NAME)
 else
-  CXXFLAGS += -Wno-nonnull-compare
-  LIB_DIR := lib/linux
+  ifeq ($(OSX_BUILD),1)
+    ifeq ($(OSX_ARM),1)
+      LIB_DIR := ./lib/mac_arm
+      CXXFLAGS += -arch arm64
+      LDFLAGS += -arch arm64
+    else
+      LIB_DIR := ./lib/mac_intel
+      CXXFLAGS += -arch x86_64
+      LDFLAGS += -arch x86_64
+    endif
+    CXXFLAGS += -DOSX_BUILD=1
+    DYNLIB_NAME := libcoopnet.dylib
+    LIBS := -l juice.1.6.2
+    LDFLAGS += -rpath . -dynamiclib -install_name @rpath/$(DYNLIB_NAME)
+  else
+    CXXFLAGS += -Wno-nonnull-compare
+    LIB_DIR := lib/linux
+  endif
 endif
 
 ifeq ($(LOGGING),1)

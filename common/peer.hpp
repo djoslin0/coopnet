@@ -5,6 +5,8 @@
 
 class Client;
 
+#define PEER_TIMEOUT 45.0f /* 45 seconds */
+
 typedef enum {
     PEER_EVENT_STATE_CHANGED,
     PEER_EVENT_RECV,
@@ -48,6 +50,7 @@ class Peer {
         char mSdp[JUICE_MAX_SDP_STRING_LEN];
 
         Peer(Client* client, uint64_t aId, uint32_t aPriority);
+        ~Peer();
 
         void Update();
 

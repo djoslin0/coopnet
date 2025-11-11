@@ -17,28 +17,32 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef JUICE_HAS_EXPORT_HEADER
-#include "juice_export.h"
-#else // no export header
-#ifdef JUICE_STATIC
-#define JUICE_EXPORT
-#else // dynamic library
-#ifdef _WIN32
-#if defined(JUICE_EXPORTS) || defined(juice_EXPORTS)
-#define JUICE_EXPORT __declspec(dllexport) // building the library
-#else
-#define JUICE_EXPORT __declspec(dllimport) // using the library
+#ifndef JUICE_STATIC // dynamic library
+#  ifdef _WIN32
+#    ifdef JUICE_EXPORTS
+#      define JUICE_EXPORT __declspec(dllexport) // building the library
+#    else
+#      define JUICE_EXPORT __declspec(dllimport) // using the library
+#    endif
+#  else // not WIN32
+#    if defined(__has_attribute)
+#      if __has_attribute(visibility)
+#        define JUICE_EXPORT __attribute__((visibility("default")))
+#      endif
+#    endif
+#  endif
 #endif
-#else // not WIN32
-#define JUICE_EXPORT
-#endif
-#endif
+#ifndef JUICE_EXPORT
+#  define JUICE_EXPORT
 #endif
 
 #define JUICE_ERR_SUCCESS 0
 #define JUICE_ERR_INVALID -1   // invalid argument
 #define JUICE_ERR_FAILED -2    // runtime error
 #define JUICE_ERR_NOT_AVAIL -3 // element not available
+#define JUICE_ERR_IGNORED -4   // ignored
+#define JUICE_ERR_AGAIN -5     // buffer full
+#define JUICE_ERR_TOO_LARGE -6 // datagram too large
 
 // ICE Agent
 
@@ -62,6 +66,16 @@ typedef void (*juice_cb_candidate_t)(juice_agent_t *agent, const char *sdp, void
 typedef void (*juice_cb_gathering_done_t)(juice_agent_t *agent, void *user_ptr);
 typedef void (*juice_cb_recv_t)(juice_agent_t *agent, const char *data, size_t size,
                                 void *user_ptr);
+
+typedef struct juice_mux_binding_request {
+	const char *local_ufrag;
+	const char *remote_ufrag;
+
+	const char *address;
+	uint16_t port;
+} juice_mux_binding_request_t;
+
+typedef void (*juice_cb_mux_incoming_t)(const juice_mux_binding_request_t *info, void *user_ptr);
 
 typedef struct juice_turn_server {
 	const char *host;
@@ -106,6 +120,7 @@ JUICE_EXPORT int juice_gather_candidates(juice_agent_t *agent);
 JUICE_EXPORT int juice_get_local_description(juice_agent_t *agent, char *buffer, size_t size);
 JUICE_EXPORT int juice_set_remote_description(juice_agent_t *agent, const char *sdp);
 JUICE_EXPORT int juice_add_remote_candidate(juice_agent_t *agent, const char *sdp);
+JUICE_EXPORT int juice_add_turn_server(juice_agent_t *agent, const juice_turn_server_t *turn_server);
 JUICE_EXPORT int juice_set_remote_gathering_done(juice_agent_t *agent);
 JUICE_EXPORT int juice_send(juice_agent_t *agent, const char *data, size_t size);
 JUICE_EXPORT int juice_send_diffserv(juice_agent_t *agent, const char *data, size_t size, int ds);
@@ -114,7 +129,9 @@ JUICE_EXPORT int juice_get_selected_candidates(juice_agent_t *agent, char *local
                                                char *remote, size_t remote_size);
 JUICE_EXPORT int juice_get_selected_addresses(juice_agent_t *agent, char *local, size_t local_size,
                                               char *remote, size_t remote_size);
+JUICE_EXPORT int juice_set_local_ice_attributes(juice_agent_t *agent, const char *ufrag, const char *pwd);
 JUICE_EXPORT const char *juice_state_to_string(juice_state_t state);
+JUICE_EXPORT int juice_mux_listen(const char *bind_address, int local_port, juice_cb_mux_incoming_t cb, void *user_ptr);
 
 // ICE server
 

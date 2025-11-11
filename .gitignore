@@ -1,2 +1,6 @@
 bin
 .vscode
+*.txt
+*.cfg
+digitalocean.py
+__pycache__

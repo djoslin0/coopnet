@@ -1,6 +1,12 @@
+#ifdef OSX_BUILD
+#include <mach-o/dyld.h>
+#endif
+
 #include <stdexcept>
 #include <string>
 #include <ctime>
+#include <fstream>
+#include <filesystem>
 #include "socket.hpp"
 
 // Convert a domain name to an in_addr using gethostbyname
@@ -44,4 +50,42 @@ static uint64_t clock_elapsed_ns(void) {
 
 float clock_elapsed(void) {
     return (clock_elapsed_ns() / 1000000000.0f);
+}
+
+std::string getExecutablePath() {
+    char path[0xFF];
+#if defined(_WIN32)
+    if (GetModuleFileNameA(nullptr, path, MAX_PATH) != 0) {
+        return std::string(path);
+    }
+#elif defined(__linux__)
+    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (len != -1) {
+        path[len] = '\0';
+        return std::string(path);
+    }
+#elif defined(__APPLE__)
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) == 0) {
+        return std::string(path);
+    }
+#endif
+    return "";
+}
+
+static std::string readFileData(const std::string &filepath) {
+    if (filepath == "") { return ""; }
+    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
+    if (!file) throw std::runtime_error("Cannot open file.");
+    std::streamsize fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+    std::string data(fileSize, '\0');
+    if (!file.read(&data[0], fileSize)) throw std::runtime_error("Cannot read file data.");
+    return data;
+}
+
+std::size_t hashFile(const std::string &filepath = getExecutablePath()) {
+    const std::string data = readFileData(filepath);
+    if (data == "") { return 0; }
+    return std::hash<std::string>{}(data);
 }

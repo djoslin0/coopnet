@@ -9,8 +9,8 @@
 #include "libcoopnet.h"
 #include "logging.hpp"
 #include "mpacket.hpp"
-
-#define CONNECTION_KEEP_ALIVE_SECS (60 * 3)
+#include "peer.hpp"
+#include "server.hpp"
 
 Connection::Connection(uint64_t id) {
     mId = id;
@@ -44,6 +44,7 @@ void Connection::Begin(uint64_t (*aDestIdFunction)(uint64_t aInput)) {
     std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
     uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
     mLastSendTime = now;
+    mLastReceiveTime = now;
 
     LOG_INFO("[%" PRIu64 "] Connection accepted: %s :: %" PRIu64 "", mId, mAddressStr.c_str(), mDestinationId);
 }
@@ -70,6 +71,25 @@ void Connection::Update() {
     uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
     if ((mLastSendTime + CONNECTION_KEEP_ALIVE_SECS) < now) {
         MPacketKeepAlive({ 0 }).Send(*this);
+    }
+
+    // check up on peers
+    if (mActive && gServer) {
+        if (!mLobby) {
+            mPeerTimeouts.clear();
+        } else {
+            for (auto it = mPeerTimeouts.begin(); it != mPeerTimeouts.end();) {
+                uint64_t peerId = it->first;
+                uint64_t timeout = it->second;
+                if (now <= timeout) { ++it; continue; }
+                it = mPeerTimeouts.erase(it);
+
+                Connection* other = gServer->ConnectionGet(peerId);
+                if (!other || !other->mActive) { continue; }
+                if (!mLobby || mLobby != other->mLobby) { continue; }
+                gServer->ReputationIncrease(mDestinationId);
+            }
+        }
     }
 }
 
@@ -124,6 +144,32 @@ void Connection::Receive() {
     }
     printf("\n");*/
 
+    if (ret > 0) {
+        std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+        uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+        mLastReceiveTime = now;
+    }
+
     mDataSize += ret;
     MPacket::Read(this, mData, &mDataSize, MPACKET_MAX_SIZE);
+}
+
+void Connection::PeerBegin(uint64_t aPeerId) {
+    if (mPeerTimeouts.count(aPeerId) > 0) { return; }
+    if (aPeerId == mDestinationId) { return; }
+    std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+    uint64_t now = std::chrono::system_clock::to_time_t(nowTp);
+    mPeerTimeouts[aPeerId] = now + PEER_TIMEOUT * 2;
+}
+
+void Connection::PeerFail(uint64_t aPeerId) {
+    if (mPeerTimeouts.count(aPeerId) > 0) {
+        mPeerTimeouts.erase(aPeerId);
+    }
+    if (gServer && mActive) {
+        Connection* other = gServer->ConnectionGet(aPeerId);
+        if (!other || !other->mActive) { return; }
+        if (!mLobby || mLobby != other->mLobby) { return; }
+        gServer->ReputationDecrease(mDestinationId);
+    }
 }

@@ -12,6 +12,11 @@
 #include "connection.hpp"
 #include "lobby.hpp"
 
+struct Reptuation {
+    int32_t value;
+    uint64_t timestamp;
+};
+
 class Server {
     private:
         std::thread mThreadRecv;
@@ -20,15 +25,18 @@ class Server {
         std::map<uint64_t, Connection*> mConnections;
         std::mutex mConnectionsMutex;
         std::map<uint64_t, Lobby*> mLobbies;
-        std::mt19937_64 mPrng;
+        std::mt19937_64 mPrng1;
+        std::mt19937_64 mPrng2;
         std::uniform_int_distribution<uint64_t> mRng;
         std::vector<StunTurnServer> mTurnServers;
         std::set<uint64_t> mQueueDisconnects;
+        std::map<uint64_t, struct Reptuation> mReputation;
         int mLobbyCount = 0;
         int mPlayerCount = 0;
         bool mRefreshBans = false;
 
         void ReadTurnServers();
+        void ReputationUpdate();
 
     public:
 
@@ -53,6 +61,10 @@ class Server {
 
         void QueueDisconnect(uint64_t aUserId, bool aLockMutex);
         void RefreshBans();
+
+        void ReputationIncrease(uint64_t aDestinationId);
+        void ReputationDecrease(uint64_t aDestinationId);
+        int32_t ReputationGet(uint64_t aDestinationId);
 };
 
 extern Server* gServer;
