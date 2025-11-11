@@ -9,6 +9,11 @@
 #include <filesystem>
 #include "socket.hpp"
 
+#if defined(__APPLE__)
+// for _NSGetExecutablePath
+#include <mach-o/dyld.h>
+#endif
+
 // Convert a domain name to an in_addr using gethostbyname
 in_addr_t GetAddrFromDomain(const std::string& domain) {
     struct hostent* he = gethostbyname(domain.c_str());
